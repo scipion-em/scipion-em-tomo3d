@@ -2,7 +2,8 @@
 jjsoft plugin
 =============
 
-This plugin allows to use jjsoft within the Scipion framework.
+This plugin allows to use jjsoft within the Scipion framework. The binaries for the plugin must be obtained from 
+https://sites.google.com/site/3demimageprocessing/
 
 =====
 Setup
@@ -23,4 +24,3 @@ Alternatively, in devel mode:
 .. code-block::
 
     scipion installp -p local/path/to/scipion-em-jjsoft --devel
-

@@ -40,9 +40,8 @@ class JjsoftProtDenoiseTomogram(EMProtocol):
     """
     _label = 'denoise tomogram'
 
-    DENOISE_AND = 0
+    DENOISE_EED = 0
     DENOISE_BF = 1
-    DENOISE_EED = 2
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
@@ -55,17 +54,22 @@ class JjsoftProtDenoiseTomogram(EMProtocol):
                       label='Set Of Tomograms',
                       help='Select one set of tomograms')
         form.addParam('method', EnumParam,
-                      choices=['Anistropic Non-linear Diffusion','BFlow', 'Edge Enhancing Diffusion'], default=0,
+                      choices=['Edge Enhancing Diffusion (EED)','BFlow'], default=0,
                       label='Denoising method',
-                      help='Denoising method to use.')
+                      help='Denoising method to use')
         form.addSection(label='Parameters')
         form.addParam('SigmaGaussian', FloatParam, default=0.5,
                       label='Sigma Gaussian Filter',
                       help='Sigma for initial gaussian filtering.')
-        form.addParam('nIter', IntParam, default=40,
+        form.addParam('nIter', IntParam, default=10,
                       label='Number of Iterations',
                       help='Number of Iterations of denoising.')
         #
+        form.addParam('Lambda', FloatParam, default=-1.0,
+                      condition = 'method==0',
+                      label='Lambda (EED)',
+                      help='Lambda threshold for gaussian filtering (Default (Negative): time-varying value estimated)',
+                      expertLevel=LEVEL_ADVANCED)
         form.addParam('TimeStep', FloatParam, default=0.1,
                       label='Time Step',
                       help='Time Step for Iterations (max 0.15)',
@@ -90,17 +94,14 @@ class JjsoftProtDenoiseTomogram(EMProtocol):
     def denoiseTomogramStep(self, inp_tomo_path, iter):
         # We start preparing writing those elements we're using as input to keep them untouched
         if self.method.get() == 0:
-            print('Denoising by Anistropic Non-linear Diffusion')
-            out_tomo_path = self.call_AND(inp_tomo_path, iter)
+            print('Denoising by Edge Enhancing Diffusion')
+            #Call EED
+            out_tomo_path = self.call_EED(inp_tomo_path)
 
         elif  self.method.get() == 1:
             print('Denoising by BFlow')
             # call BFlow
             out_tomo_path = self.call_BFlow(inp_tomo_path)
-
-        elif self.method.get() == 2:
-            print('Denoising by Edge Enhancing Diffusion')
-            out_tomo_path = self.call_EED(inp_tomo_path)
 
         self.outputFiles.append(out_tomo_path)
 
@@ -135,52 +136,9 @@ class JjsoftProtDenoiseTomogram(EMProtocol):
         pass
 
     def _citations(self):
-        return ['Fernandaz2018','Fernandez2009','Fernandez2003']
+        return ['Fernandez2018','Fernandez2009']
 
     # --------------------------- UTILS functions --------------------------------------------
-    def write_AND_file(self, csh_name, input_tomo_path, output_tomo_path):
-        '''Writes the AND.csh file'''
-        f=open(csh_name,'w')
-        f.write(
-            'tomoand << eof\n'
-            '{}\t # Input file\n'
-            '{}\t # Output file\n'
-            '{} N\t # Number of Iterations and [Use of Stopping Criterion]\n'
-            '-1\t # C Constant for CED\n'
-            '-1\t # K Constant for EED\n'
-            '0.5\t # CED/EED Balance Parameter\n'
-            '0.5\t # Proportion of CED along 2nd eigenvector\n'
-            '0.5\t # Proportion of Smoothing based on Grey level\n'
-            '45 140 45\t # Coordinates of the Noise Area ( X Y Z )\n'
-            '{} 2\t # Initial sigma and sigma for averaging struc.Tensor\n'
-            '{} {}\t # ht and [N. Threads]\n'
-            '0\t # [Diffusion Mode: Standard Hybrid (0); Averaged EED(1|2)]\n'
-            'eof'.format(input_tomo_path,output_tomo_path,
-                        self.nIter.get(),self.SigmaGaussian.get(),
-                        self.TimeStep.get(),self.numberOfThreads)
-        )
-        f.close()
-        #return params['output_tomo_path']
-
-    def create_AND_file(self, input_tomo_path, iter):
-        '''Create the csh file that stores the parameters'''
-        output_csh = self._getExtraPath('tomoand_{}.csh'.format(iter))
-        output_tomo_path = self._getExtraPath('denoisedEED_'+input_tomo_path.split('/')[-1])
-
-        self.write_AND_file(output_csh, input_tomo_path, output_tomo_path)
-
-        args=''
-        call='chmod 777 {}'.format(output_csh)
-        self.runJob(call, args)
-        return output_csh, output_tomo_path
-
-    def call_AND(self, inp_tomo_path, iter):
-        '''Denoises de tomogram using the AND method'''
-        and_csh, out_tomo_path = self.create_AND_file(inp_tomo_path, iter)
-        args=''
-        self.runJob(and_csh,args)
-        return out_tomo_path
-
     def call_BFlow(self, inp_tomo_path):
         '''Denoises de tomogram using the AND method'''
         params = '-g {} -i {} -s {} -t {}'.format(self.SigmaGaussian.get(), self.nIter.get(),
@@ -192,7 +150,11 @@ class JjsoftProtDenoiseTomogram(EMProtocol):
 
     def call_EED(self, inp_tomo_path):
         '''Denoises de tomogram using the AND method'''
-        params = '-g {} -i {} -s {}'.format(self.SigmaGaussian.get(), self.nIter.get(), self.TimeStep.get())
+        if self.Lambda.get() < 0:
+            params = '-g {} -i {} -s {}'.format(self.SigmaGaussian.get(), self.nIter.get(), self.TimeStep.get())
+        else:
+            params = '-g {} -i {} -s {} -k {}'.format(self.SigmaGaussian.get(), self.nIter.get(),
+                                                      self.TimeStep.get(),self.Lambda.get())
         out_tomo_path = self._getExtraPath('denoisedEED_'+inp_tomo_path.split('/')[-1])
         args = '{} {} {}'.format(params, inp_tomo_path, out_tomo_path)
         self.runJob('tomoeed', args)

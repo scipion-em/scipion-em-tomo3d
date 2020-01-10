@@ -40,11 +40,9 @@ class JJDenoiseIterationsWizard(Wizard):
     _targets = [(JjsoftProtDenoiseTomogram, ['nIter'])]
 
     def _getNiter(self, protocol):
-        if protocol.method.get()==protocol.DENOISE_AND:
-            nIter = 40
-        elif protocol.method.get()==protocol.DENOISE_EED:
+        if protocol.method.get()==protocol.DENOISE_EED:
             nIter = 10
-        else:
+        elif protocol.method.get()==protocol.DENOISE_BF:
             nIter = 70
         return nIter
 

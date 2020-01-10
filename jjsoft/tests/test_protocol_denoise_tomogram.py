@@ -2,7 +2,7 @@
 
 # ***************************************************************************
 # *
-# * Authors:     David Maluenda (dmaluenda@cnb.csic.es)
+# * Authors:     Daniel Del Hoyo (daniel.delhoyo.gomez@alumnos.upm.es)
 # *
 # * Unidad de Bioinformatica of Centro Nacional de Biotecnologia, CSIC
 # *
@@ -33,8 +33,6 @@ from pyworkflow.utils import redStr, greenStr
 
 from jjsoft.protocols.protocol_denoise_tomogram import JjsoftProtDenoiseTomogram
 
-from tomo.objects import Tomogram, SetOfTomograms
-from tomo.protocols.protocol_base import ProtTomoImportFiles, ProtTomoImportAcquisition
 from tomo.protocols.protocol_import_tomograms import ProtImportTomograms
 
 
@@ -48,8 +46,7 @@ class TestTomogramDenoising(BaseTest):
         cls.jjsoftDataTest = DataSet.getDataSet('tomo-em')
 
         def _importTomograms():
-            """ We import a set of classes with an alterate import particles
-                because there is not a import classes protocol
+            """ Importing a set of tomograms
             """
             pImpTomograms = cls.proj.newProtocol(ProtImportTomograms,
                                                filesPath=cls.jjsoftDataTest.getFile('tomo'),
@@ -75,36 +72,17 @@ class TestTomogramDenoising(BaseTest):
 
     # The tests themselves.
     #
-    def testDenoisingAND(self):
-        print "\n", greenStr(" Test AND denoising ".center(75, '-'))
-
-        # preparing and launching the protocol
-        pDenoiseAND = self.proj.newProtocol(JjsoftProtDenoiseTomogram,
-                                            inputSetTomograms=self.setOfTomograms,
-                                            method=0,
-                                            SigmaGaussian=0.5,
-                                            nIter=1,
-                                            TimeStep=0.1)
-        self.proj.launchProtocol(pDenoiseAND, wait=True)
-        setOfANDDenoisedTomograms = pDenoiseAND.outputTomograms
-
-        # some general assertions
-        self.assertIsNotNone(setOfANDDenoisedTomograms,
-                             "There was some problem with the output")
-        self.assertEqual(setOfANDDenoisedTomograms.getSize(), self.setOfTomograms.getSize(),
-                         "The number of the denoised tomograms is wrong")
-
-
     def testDenoisingEED(self):
         print "\n", greenStr(" Test EED denoising ".center(75, '-'))
 
         # preparing and launching the protocol
         pDenoiseEED = self.proj.newProtocol(JjsoftProtDenoiseTomogram,
                                             inputSetTomograms=self.setOfTomograms,
-                                            method=2,
+                                            method=0,
                                             SigmaGaussian=0.5,
                                             nIter=1,
-                                            TimeStep=0.1)
+                                            TimeStep=0.1,
+                                            Lambda=-1.0)
         self.proj.launchProtocol(pDenoiseEED, wait=True)
         setOfEEDDenoisedTomograms = pDenoiseEED.outputTomograms
 

@@ -40,16 +40,20 @@ class Plugin(pyworkflow.em.Plugin):
 
     @classmethod
     def _defineVariables(cls):
-        cls._defineEmVar(JJSOFT_HOME, "tomobins")
+        cls._defineEmVar(JJSOFT_HOME, "jjsoft")
 
 
     @classmethod
     def getEnviron(cls):
-        """ Setup the environment variables needed to launch Xmipp2. """
+        """ Setup the environment variables needed to launch Jj software. """
         environ = Environ(os.environ)
 
         environ.update({
             'PATH': os.path.join(cls.getVar(JJSOFT_HOME))
+        }, position=Environ.BEGIN)
+
+        environ.update({
+            'PATH': os.path.join(cls.getVar(JJSOFT_HOME),'bin')
         }, position=Environ.BEGIN)
 
         return environ
@@ -60,24 +64,3 @@ class Plugin(pyworkflow.em.Plugin):
 
 
 pyworkflow.em.Domain.registerPlugin(__name__)
-
-
-@classmethod
-def defineBinaries(cls, env):
-    """ Define the Xmipp binaries/source available tgz.
-    """
-    scons = tryAddPipModule(env, 'scons', '3.0.4', default=True)
-
-def tryAddPipModule(env, moduleName, *args, **kwargs):
-    """ To try to add certain pipModule.
-        If it fails due to it is already add by other plugin or Scipion,
-          just returns its name to use it as a dependency.
-        Raise the exception if unknown error is gotten.
-    """
-    try:
-        return env.addPipModule(moduleName, *args, **kwargs)._name
-    except Exception as e:
-        if "Duplicated target '%s'" % moduleName == str(e):
-            return moduleName
-        else:
-            raise Exception(e)

@@ -15,5 +15,6 @@ from pyworkflow.tests import DataSet
 
 DataSet(name='tomo-em', folder='tomo-em',
         files={
-               'tomo': 'tomo_8_mn.mrc',
+            'tomo': 'tomo_8_mn.mrc',
+            'etomo': 'tutorialData',
         })

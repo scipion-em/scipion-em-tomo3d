@@ -30,13 +30,8 @@ from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, Floa
 from tomo.objects import Tomogram, SetOfTomograms
 
 class JjsoftProtDenoiseTomogram(EMProtocol):
-    """ Remove particles noise by filtering them.
-    This filtering process is based on a projection over a basis created
-    from some averages (extracted from classes). This filtering is not
-    intended for processing particles. The huge filtering they will be
-    passed through is known to remove part of the signal with the noise.
-    However this is a good method for clearly see which particle are we
-    going to process before it's done.
+    """ Denoises sets of tomograms using methods described in https://sites.google.com/site/3demimageprocessing/
+    and returns the set of denoised tomograms
     """
     _label = 'denoise tomogram'
 
@@ -82,16 +77,14 @@ class JjsoftProtDenoiseTomogram(EMProtocol):
         inputTomos = self.inputSetTomograms.get()
         self.outputFiles = []
         pre = []
-        iter = 1
         for tomo in inputTomos.iterItems():
-            stepId= self._insertFunctionStep('denoiseTomogramStep', tomo.getFileName(), iter)
+            stepId= self._insertFunctionStep('denoiseTomogramStep', tomo.getFileName())
             pre.append(stepId)
-            iter += 1
 
         self._insertFunctionStep('createOutputStep', prerequisites=pre)
 
     # --------------------------- STEPS functions --------------------------------------------
-    def denoiseTomogramStep(self, inp_tomo_path, iter):
+    def denoiseTomogramStep(self, inp_tomo_path):
         # We start preparing writing those elements we're using as input to keep them untouched
         if self.method.get() == 0:
             print('Denoising by Edge Enhancing Diffusion')

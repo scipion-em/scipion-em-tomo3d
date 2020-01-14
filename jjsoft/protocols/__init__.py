@@ -26,3 +26,4 @@
 # **************************************************************************
 
 from .protocol_denoise_tomogram import JjsoftProtDenoiseTomogram
+from .protocol_reconstruct_tomogram import JjsoftReconstructTomogram

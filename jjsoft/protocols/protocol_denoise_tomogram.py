@@ -32,7 +32,7 @@ from tomo.objects import Tomogram, SetOfTomograms
 
 class JjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
     """ Denoises sets of tomograms using methods described in https://sites.google.com/site/3demimageprocessing/
-    and returns the set of denoised tomograms
+    Returns the set of denoised tomograms
     """
     _label = 'denoise tomogram'
 

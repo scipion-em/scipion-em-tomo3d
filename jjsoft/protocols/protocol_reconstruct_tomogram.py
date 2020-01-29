@@ -26,7 +26,7 @@
 from tomo.protocols import ProtTomoBase
 
 from pwem.protocols import EMProtocol
-from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, BooleanParam, PointerParam
+from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatParam
 
 from tomo.objects import Tomogram
 import os
@@ -35,7 +35,7 @@ from tomo.convert import writeTiStack
 
 class JjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
     """ Reconstruct tomograms from aligned tilt series using TOMO3D from
-    https://sites.google.com/site/3demimageprocessing/
+    Software from: https://sites.google.com/site/3demimageprocessing/
     Returns the set of tomograms
     """
     _label = 'reconstruct tomogram'
@@ -58,6 +58,34 @@ class JjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
                       condition='method==1',
                       label='Number of Iterations (SIRT)',
                       help='Number of Iterations used in the SIRT method')
+        form.addParam('Hamming', FloatParam, default=0.0,
+                      label='Hamming filter frequency',
+                      help='Frequency for the Hamming atenuation filter [0,0.5]. \n0 always uses the filter, 0.5 turns it off')
+
+        form.addParam('setShape', EnumParam,
+                      choices=['Yes', 'No'],
+                      default=1,
+                      label='Set manual tomogram shape',
+                      display=EnumParam.DISPLAY_HLIST,
+                      help='By deafault the shape of the tomogram is defined by the tilt series shape')
+
+        group = form.addGroup('Tomogram shape', condition='setShape==0')
+        group.addParam('width', IntParam,
+                       default=0,
+                       label='Width',
+                       help='Focus the tomogram in a region of the tilt series')
+        group.addParam('height', IntParam,
+                       default=0,
+                       label='Thickness',
+                       help='Height of the reconstructed tomogram (Default: width of the tomogram)')
+        group.addParam('iniSlice', IntParam,
+                       default=0,
+                       label='Initial slice',
+                       help='Initial slice (of range) to include')
+        group.addParam('finSlice', IntParam,
+                       default=0,
+                       label='Final slice',
+                       help='Final slice (of range) to include (Maximum must be the size of tilt series)')
 
         form.addParallelSection(threads=4, mpi=0)
 
@@ -99,6 +127,14 @@ class JjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
         params=''
         if self.method==1:
             params+=' -S -l '+str(self.nIterations)
+        if self.setShape.get() == 0:
+            if self.width.get() != 0:
+                params += ' -x {}'.format(self.width.get())
+            if self.finSlice.get() != 0:
+                params += ' -y {},{}'.format(self.iniSlice.get(), self.finSlice.get())
+            if self.height.get() != 0:
+                params += ' -z {}'.format(self.height.get())
+
         args = '-i {} -a {} -o {} -t {}'.format(TsPath, AnglesPath, out_tomo_path, self.numberOfThreads)
         args+=params
         self.runJob('tomo3d', args)

@@ -32,12 +32,15 @@ from tomo.objects import Tomogram
 import os
 import pyworkflow as pw
 from tomo.convert import writeTiStack
+from imod.utils import formatTransformFile
 
 class JjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
     """ Reconstruct tomograms by aligning the tilt series using the fiducial positions with tomoalign
-    and then reconstructs the tomogram with tomorec. It returns the set of tomograms
+    and then reconstructs the tomogram with tomorec.
+    Software from : https://sites.google.com/site/3demimageprocessing/
+    Returns the set of tomograms
     """
-    _label = 'align and reconstruct tomogram'
+    _label = 'motion compensated reconstruction'
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
@@ -108,14 +111,18 @@ class JjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
                        default=0,
                        label='Width',
                        help='Focus the tomogram in a region of the tilt series')
-        group.addParam('nSlices', IntParam,
-                       default=0,
-                       label='Number of slices',
-                       help='The number of the slices (along the tilt axis) of the reconstructed tomogram')
         group.addParam('height', IntParam,
                        default=0,
                        label='Thickness',
                        help='Height of the reconstructed tomogram (Default: width of the tomogram)')
+        group.addParam('iniSlice', IntParam,
+                       default=0,
+                       label='Initial slice',
+                       help='Initial slice (of range) to include')
+        group.addParam('finSlice', IntParam,
+                       default=0,
+                       label='Final slice',
+                       help='Final slice (of range) to include (Maximum must be the size of tilt series)')
 
 
         form.addParallelSection(threads=4, mpi=0)
@@ -152,6 +159,8 @@ class JjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
             writeTiStack(tiList,
                          outputStackFn=prefix + '.st',
                          outputTltFn=prefix + '.tlt')
+            if ts.getFirstItem().hasTransform():
+                formatTransformFile(ts, prefix + '.xf')
 
     def convertFiducialTextStep(self):
         for fidu in self.inputSetOfLandmarkModels.get():
@@ -167,7 +176,7 @@ class JjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
         for fidu in self.inputSetOfLandmarkModels.get():
             tsId = fidu.getTsId()
             workingFolder = self._getExtraPath(tsId)
-            TsPath, AnglesPath = self.get_Ts_files(workingFolder, tsId)
+            TsPath, AnglesPath, transformPath = self.get_Ts_files(workingFolder, tsId)
             fiducial_text = workingFolder + '/imod_{}.fid.txt'.format(tsId)
             out_bin = workingFolder + '/alignment_{}.bin'.format(tsId)
 
@@ -181,6 +190,9 @@ class JjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
             else:
                 params += ' -t thick'
 
+            if self.imodXF.get() == 0 and os.path.exists(transformPath):
+                params += ' -I ' + transformPath
+
             args = '-i {} -a {} -o {}'.format(fiducial_text, AnglesPath, out_bin)
             args += params
             self.runJob('tomoalign', args)
@@ -189,7 +201,7 @@ class JjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
         for fidu in self.inputSetOfLandmarkModels.get():
             tsId = fidu.getTsId()
             workingFolder = self._getExtraPath(tsId)
-            TsPath, AnglesPath = self.get_Ts_files(workingFolder, tsId)
+            TsPath, AnglesPath, transformPath = self.get_Ts_files(workingFolder, tsId)
             out_tomo_path = workingFolder + '/tomo_{}.mrc'.format(tsId)
             align_bin = workingFolder + '/alignment_{}.bin'.format(tsId)
 
@@ -204,15 +216,13 @@ class JjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
             if self.setShape.get() == 0:
                 if self.width.get() != 0:
                     params += ' -x {}'.format(self.width.get())
-                if self.nSlices.get() != 0:
-                    params += ' -y {}'.format(self.nSlices.get())
+                if self.finSlice.get() != 0:
+                    params += ' -Y {},{}'.format(self.iniSlice.get(),self.finSlice.get())
                 if self.height.get() != 0:
                     params += ' -z {}'.format(self.height.get())
 
-            if self.imodXF.get() == 0:
-                xf_file = fidu.getFileName()
-                xf_file = '/'.join(xf_file.split('/')[:-1]) + '/{}local.xf'.format(tsId)
-                params += ' -S '+xf_file
+            if self.imodXF.get() == 0 and os.path.exists(transformPath):
+                params += ' -S ' + transformPath
 
             params += ' -t {}'.format(self.numberOfThreads)
 
@@ -260,7 +270,9 @@ class JjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
         prefix = os.path.join(ts_folder, TsId)
         TsPath = prefix + '.st'
         AnglesPath = prefix + '.tlt'
-        return TsPath, AnglesPath
+        transformPath = prefix + '.xf'
+
+        return TsPath, AnglesPath, transformPath
 
     def parse_fid(self,scip_fid,out_fid):
         '''Converts the scipion fid format to JJ format needed'''

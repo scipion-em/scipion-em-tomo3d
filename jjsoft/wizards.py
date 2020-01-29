@@ -27,10 +27,7 @@
 """
 This module implement some wizards
 """
-
-import os
-
-from pyworkflow.em.wizard import *
+from pyworkflow.wizard import Wizard
 from .protocols import JjsoftProtDenoiseTomogram
 
 #===============================================================================

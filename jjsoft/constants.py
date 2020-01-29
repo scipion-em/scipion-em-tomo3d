@@ -28,6 +28,7 @@
 
 #XMIPP2_HOME = "XMIPP2_HOME"
 JJSOFT_HOME = "JJSOFT_HOME"
+IMOD_HOME = "/usr/local/IMOD/"
 
 # Supported versions:
 

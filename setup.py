@@ -22,12 +22,15 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='scipion-em-jjsoft',  # Required
-    version='1.0.2',  # Required
+    version='3.0.0',  # Required
     description='jjsoft ready to use in scipion.',  # Required
     long_description=long_description,  # Optional
     url='https://github.com/scipion-em/scipion-em-jjsoft',  # Optional
     author='I2PC',  # Optional
     author_email='scipion@cnb.csic.es',  # Optional
-    keywords='scipion cryoem imageprocessing scipion-2.0',  # Optional
-    packages=find_packages()
+    keywords='scipion cryoem imageprocessing scipion-3.0',  # Optional
+    packages=find_packages(),
+    entry_points={
+        'pyworkflow.plugin': 'jjsoft = jjsoft'
+    }
 )

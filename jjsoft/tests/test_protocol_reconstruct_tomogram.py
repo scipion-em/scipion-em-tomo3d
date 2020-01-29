@@ -27,7 +27,7 @@
 # **************************************************************************
 
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
-from pyworkflow.utils import redStr, greenStr
+from pyworkflow.utils import greenStr
 
 from jjsoft.protocols.protocol_reconstruct_tomogram import JjsoftReconstructTomogram
 
@@ -43,33 +43,54 @@ class TestTomogramReconstruction(BaseTest):
         cls.jjsoftDataTest = DataSet.getDataSet('tomo-em')
         cls.getFile = cls.jjsoftDataTest.getFile('etomo')
 
-    def _runImportTiltSeries(self):
-        protImport = self.newProtocol(
-            ProtImportTs,
-            filesPath=self.getFile,
-            filesPattern='BB{TS}.st',
-            minAngle=-55,
-            maxAngle=65,
-            stepAngle=2,
-            voltage=300,
-            magnification=105000,
-            sphericalAberration=2.7,
-            amplitudeContrast=0.1,
-            samplingRate=1.35,
-            doseInitial=0,
-            dosePerFrame=0.3)
-        self.launchProtocol(protImport, wait=True)
-        return protImport
+
+        def _runImportTiltSeries():
+            protImport = cls.newProtocol(
+                ProtImportTs,
+                filesPath=cls.getFile,
+                filesPattern='BB{TS}.st',
+                minAngle=-55,
+                maxAngle=65,
+                stepAngle=2,
+                voltage=300,
+                magnification=105000,
+                sphericalAberration=2.7,
+                amplitudeContrast=0.1,
+                samplingRate=1.35,
+                doseInitial=0,
+                dosePerFrame=0.3)
+            cls.launchProtocol(protImport, wait=True)
+            return protImport
+
+        cls.setOfTs = _runImportTiltSeries().outputTiltSeries
+
 
     # The tests themselves.
     #
-    def testReconstruction(self):
-        print "\n", greenStr(" Test tomo3D reconstruction ".center(75, '-'))
-        self.setOfTs = self._runImportTiltSeries().outputTiltSeries
+    def testReconstructionWBP(self):
+        print ("\n", greenStr(" Test tomo3D reconstruction with WBP".center(75, '-')))
 
         # preparing and launching the protocol
         ptomo3D = self.proj.newProtocol(JjsoftReconstructTomogram,
-                                            inputSetOfTiltSeries=self.setOfTs)
+                                        inputSetOfTiltSeries=self.setOfTs,
+                                        method=0)
+        self.proj.launchProtocol(ptomo3D, wait=True)
+        setOfReconstructedTomograms = ptomo3D.outputTomograms
+
+        # some general assertions
+        self.assertIsNotNone(setOfReconstructedTomograms,
+                             "There was some problem with the output")
+        self.assertEqual(setOfReconstructedTomograms.getSize(), self.setOfTs.getSize(),
+                         "The number of the denoised tomograms is wrong")
+
+    def testReconstructionSIRT(self):
+        print ("\n", greenStr(" Test tomo3D reconstruction with SIRT".center(75, '-')))
+
+        # preparing and launching the protocol
+        ptomo3D = self.proj.newProtocol(JjsoftReconstructTomogram,
+                                        inputSetOfTiltSeries=self.setOfTs,
+                                        method=1,
+                                        nIterations=1)
         self.proj.launchProtocol(ptomo3D, wait=True)
         setOfReconstructedTomograms = ptomo3D.outputTomograms
 

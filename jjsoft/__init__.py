@@ -28,12 +28,12 @@
 This package contains the protocols and data for jjsoft.0
 """
 import os
-import pyworkflow.em
+import pwem
 
 from pyworkflow.utils import Environ
 from .constants import JJSOFT_HOME
 
-class Plugin(pyworkflow.em.Plugin):
+class Plugin(pwem.Plugin):
     _homeVar = JJSOFT_HOME
     _pathVars = [JJSOFT_HOME]
 
@@ -63,4 +63,4 @@ class Plugin(pyworkflow.em.Plugin):
         return cls.getActiveVersion().startswith("")
 
 
-pyworkflow.em.Domain.registerPlugin(__name__)
+pwem.Domain.registerPlugin(__name__)

@@ -23,16 +23,17 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from tomo.protocols import ProtTomoBase
 
-from pyworkflow.em.protocol import EMProtocol
+from pwem.protocols import EMProtocol
 from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, BooleanParam, PointerParam
 
-from tomo.objects import Tomogram, SetOfTomograms
+from tomo.objects import Tomogram
 import os
 import pyworkflow as pw
 from tomo.convert import writeTiStack
 
-class JjsoftReconstructTomogram(EMProtocol):
+class JjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
     """ Reconstruct tomograms from aligned tilt series using TOMO3D from
     https://sites.google.com/site/3demimageprocessing/
     Returns the set of tomograms
@@ -49,11 +50,14 @@ class JjsoftReconstructTomogram(EMProtocol):
         form.addParam('inputSetOfTiltSeries', PointerParam, important=True,
                       pointerClass='SetOfTiltSeries',
                       label='Input Tilt Series')
-        #form.addParam('method', EnumParam,
-         #             choices=['Edge Enhancing Diffusion (EED)','BFlow'], default=0,
-          #            label='Denoising method',
-           #           help='Denoising method to use')
-        form.addSection(label='Parameters')
+        form.addParam('method', EnumParam,
+                      choices=['WBP (Fast)','SIRT (Slow)'], default=0,
+                      label='Reconstruction method',
+                      help='Reconstrution method to use')
+        form.addParam('nIterations', IntParam, default=30,
+                      condition='method==1',
+                      label='Number of Iterations (SIRT)',
+                      help='Number of Iterations used in the SIRT method')
 
         form.addParallelSection(threads=4, mpi=0)
 
@@ -92,25 +96,27 @@ class JjsoftReconstructTomogram(EMProtocol):
         # We start preparing writing those elements we're using as input to keep them untouched
         TsPath, AnglesPath = self.get_Ts_files(workingFolder, tsId)
         out_tomo_path = workingFolder + '/tomo_{}.mrc'.format(tsId)
-        args = '-i {} -a {} -o {} -f -t {}'.format(TsPath, AnglesPath, out_tomo_path, self.numberOfThreads)
+        params=''
+        if self.method==1:
+            params+=' -S -l '+str(self.nIterations)
+        args = '-i {} -a {} -o {} -t {}'.format(TsPath, AnglesPath, out_tomo_path, self.numberOfThreads)
+        args+=params
         self.runJob('tomo3d', args)
         self.outputFiles.append(out_tomo_path)
 
     def createOutputStep(self):
         outputTomos = self._createSetOfTomograms()
-
+        outputTomos.copyInfo(self.inputSetOfTiltSeries.get())
+        #outputTomos.setSamplingRate(self.inputSetOfTiltSeries.getSamplingRate())
 
         for i, inp_ts in enumerate(self.inputSetOfTiltSeries.get()):
             tomo_path = self.outputFiles[i]
             tomo = Tomogram()
             tomo.setLocation(tomo_path)
-            #tomo.setOrigin(inp_ts.getOrigin())
             tomo.setSamplingRate(inp_ts.getSamplingRate())
-            tomo.setAcquisition(inp_ts.getAcquisition())
+            # tomo.setAcquisition(inp_ts.getAcquisition())
             outputTomos.append(tomo)
 
-            outputTomos.setSamplingRate(inp_ts.getSamplingRate())
-            #outputTomos.setAcquisition(inp_ts.getAcquisition())
 
         self._defineOutputs(outputTomograms=outputTomos)
         self.outputTomograms=outputTomos

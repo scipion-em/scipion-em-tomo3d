@@ -26,10 +26,9 @@
 # *
 # **************************************************************************
 
-import random
 
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
-from pyworkflow.utils import redStr, greenStr
+from pyworkflow.utils import greenStr
 
 from jjsoft.protocols.protocol_denoise_tomogram import JjsoftProtDenoiseTomogram
 
@@ -73,7 +72,7 @@ class TestTomogramDenoising(BaseTest):
     # The tests themselves.
     #
     def testDenoisingEED(self):
-        print "\n", greenStr(" Test EED denoising ".center(75, '-'))
+        print ("\n", greenStr(" Test EED denoising ".center(75, '-')))
 
         # preparing and launching the protocol
         pDenoiseEED = self.proj.newProtocol(JjsoftProtDenoiseTomogram,
@@ -93,7 +92,7 @@ class TestTomogramDenoising(BaseTest):
                          "The number of the denoised tomograms is wrong")
 
     def testDenoisingBFlow(self):
-        print "\n", greenStr(" Test BFlow denoising ".center(75, '-'))
+        print ("\n", greenStr(" Test BFlow denoising ".center(75, '-')))
 
         # preparing and launching the protocol
         pDenoiseBFlow = self.proj.newProtocol(JjsoftProtDenoiseTomogram,

@@ -23,13 +23,14 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from tomo.protocols import ProtTomoBase
 
-from pyworkflow.em.protocol import EMProtocol
+from pwem.protocols import EMProtocol
 from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, BooleanParam, PointerParam
 
 from tomo.objects import Tomogram, SetOfTomograms
 
-class JjsoftProtDenoiseTomogram(EMProtocol):
+class JjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
     """ Denoises sets of tomograms using methods described in https://sites.google.com/site/3demimageprocessing/
     and returns the set of denoised tomograms
     """

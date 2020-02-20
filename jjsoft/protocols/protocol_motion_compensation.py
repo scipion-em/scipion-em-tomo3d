@@ -51,7 +51,7 @@ class JjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
         form.addSection(label='Input')
         form.addParam('inputSetOfTiltSeries', PointerParam, important=True,
                       pointerClass='SetOfTiltSeries',
-                      label='Input Tilt Series')
+                      label='Input Tilt Series Non Interpolated')
         form.addParam('inputSetOfLandmarkModels', PointerParam, important=True,
                       pointerClass='SetOfLandmarkModels',
                       label='Input Fiducial Models')

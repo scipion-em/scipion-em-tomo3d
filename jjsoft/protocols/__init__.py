@@ -27,5 +27,5 @@
 
 from .protocol_denoise_tomogram import JjsoftProtDenoiseTomogram
 from .protocol_reconstruct_tomogram import JjsoftReconstructTomogram
-#from .protocol_align_reconstruct import JjsoftAlignReconstructTomogram
+from .protocol_align_ts import JjsoftAlignTs
 from .protocol_motion_compensation import JjsoftAlignReconstructTomogram

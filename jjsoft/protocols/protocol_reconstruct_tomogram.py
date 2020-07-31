@@ -23,6 +23,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from jjsoft import Plugin
 from tomo.protocols import ProtTomoBase
 
 from pwem.protocols import EMProtocol
@@ -33,7 +34,8 @@ import os
 import pyworkflow as pw
 from tomo.convert import writeTiStack
 
-class JjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
+
+class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
     """ Reconstruct tomograms from aligned tilt series using TOMO3D from
     Software from: https://sites.google.com/site/3demimageprocessing/
     Returns the set of tomograms
@@ -137,7 +139,7 @@ class JjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
 
         args = '-i {} -a {} -o {} -t {}'.format(TsPath, AnglesPath, out_tomo_path, self.numberOfThreads)
         args+=params
-        self.runJob('tomo3d', args)
+        self.runJob(Plugin.getTomoRecProgram(), args)
         self.outputFiles.append(out_tomo_path)
 
     def createOutputStep(self):

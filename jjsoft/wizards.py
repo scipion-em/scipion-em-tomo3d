@@ -28,18 +28,20 @@
 This module implement some wizards
 """
 from pyworkflow.wizard import Wizard
-from .protocols import JjsoftProtDenoiseTomogram
+from .protocols import ProtJjsoftProtDenoiseTomogram
 
 #===============================================================================
 # CONSENSUS RADIUS
 #===============================================================================
+
+
 class JJDenoiseIterationsWizard(Wizard):
-    _targets = [(JjsoftProtDenoiseTomogram, ['nIter'])]
+    _targets = [(ProtJjsoftProtDenoiseTomogram, ['nIter'])]
 
     def _getNiter(self, protocol):
-        if protocol.method.get()==protocol.DENOISE_EED:
+        if protocol.method.get() == protocol.DENOISE_EED:
             nIter = 10
-        elif protocol.method.get()==protocol.DENOISE_BF:
+        elif protocol.method.get() == protocol.DENOISE_BF:
             nIter = 70
         return nIter
 

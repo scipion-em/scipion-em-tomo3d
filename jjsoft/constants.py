@@ -26,12 +26,5 @@
 # **************************************************************************
 
 
-#XMIPP2_HOME = "XMIPP2_HOME"
 JJSOFT_HOME = "JJSOFT_HOME"
-IMOD_HOME = "/usr/local/IMOD/"
-
-# Supported versions:
-
-# This is the same dogpicker version but made compatible with PILLOW update
-# Image.fromstring is replaced by Image.frombytes
 V0_1 = '0.1'

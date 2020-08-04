@@ -30,7 +30,7 @@
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import greenStr
 
-from jjsoft.protocols.protocol_denoise_tomogram import JjsoftProtDenoiseTomogram
+from jjsoft.protocols.protocol_denoise_tomogram import ProtJjsoftProtDenoiseTomogram
 
 from tomo.protocols.protocol_import_tomograms import ProtImportTomograms
 
@@ -43,46 +43,38 @@ class TestTomogramDenoising(BaseTest):
         setupTestProject(cls)  # defined in BaseTest, creates cls.proj
 
         cls.jjsoftDataTest = DataSet.getDataSet('tomo-em')
+        cls.setOfTomograms = cls._importTomograms()
 
-        def _importTomograms():
-            """ Importing a set of tomograms
-            """
-            pImpTomograms = cls.proj.newProtocol(ProtImportTomograms,
-                                               filesPath=cls.jjsoftDataTest.getFile('tomo'),
-                                               samplingRate=1.35,
-                                               acquisitionAngleMax=40.0,
-                                               acquisitionAngleMin=-40.0)
+    @classmethod
+    def _importTomograms(cls):
+        """ Importing a set of tomograms
+        """
+        pImpTomograms = cls.newProtocol(ProtImportTomograms,
+                                        filesPath=cls.jjsoftDataTest.getFile('tomo'),
+                                        samplingRate=1.35,
+                                        acquisitionAngleMax=40.0,
+                                        acquisitionAngleMin=-40.0)
 
-            pImpTomograms.setObjLabel('Import tomograms')
+        pImpTomograms.setObjLabel('Import tomograms')
 
-            # we launch the protocol to obtain the tomograms
-            cls.proj.launchProtocol(pImpTomograms, wait=True)
+        # we launch the protocol to obtain the tomograms
+        cls.launchProtocol(pImpTomograms, wait=True)
 
-            # Setting the set of tomograms object
-            tomoSet = pImpTomograms.outputTomograms
+        # Setting the set of tomograms object
+        return pImpTomograms.outputTomograms
 
-            # Defining the set of tomograms as output
-            pImpTomograms._defineOutputs(outputClasses=tomoSet)
-
-            return pImpTomograms.outputClasses
-
-        cls.setOfTomograms = _importTomograms()
-
-
-    # The tests themselves.
-    #
     def testDenoisingEED(self):
         print ("\n", greenStr(" Test EED denoising ".center(75, '-')))
 
         # preparing and launching the protocol
-        pDenoiseEED = self.proj.newProtocol(JjsoftProtDenoiseTomogram,
-                                            inputSetTomograms=self.setOfTomograms,
-                                            method=0,
-                                            SigmaGaussian=0.5,
-                                            nIter=1,
-                                            TimeStep=0.1,
-                                            Lambda=-1.0)
-        self.proj.launchProtocol(pDenoiseEED, wait=True)
+        pDenoiseEED = self.newProtocol(ProtJjsoftProtDenoiseTomogram,
+                                       inputSetTomograms=self.setOfTomograms,
+                                       method=0,
+                                       SigmaGaussian=0.5,
+                                       nIter=1,
+                                       TimeStep=0.1,
+                                       Lambda=-1.0)
+        self.launchProtocol(pDenoiseEED, wait=True)
         setOfEEDDenoisedTomograms = pDenoiseEED.outputTomograms
 
         # some general assertions
@@ -95,13 +87,13 @@ class TestTomogramDenoising(BaseTest):
         print ("\n", greenStr(" Test BFlow denoising ".center(75, '-')))
 
         # preparing and launching the protocol
-        pDenoiseBFlow = self.proj.newProtocol(JjsoftProtDenoiseTomogram,
-                                            inputSetTomograms=self.setOfTomograms,
-                                            method=1,
-                                            SigmaGaussian=0.5,
-                                            nIter=1,
-                                            TimeStep=0.1)
-        self.proj.launchProtocol(pDenoiseBFlow, wait=True)
+        pDenoiseBFlow = self.newProtocol(ProtJjsoftProtDenoiseTomogram,
+                                         inputSetTomograms=self.setOfTomograms,
+                                         method=1,
+                                         SigmaGaussian=0.5,
+                                         nIter=1,
+                                         TimeStep=0.1)
+        self.launchProtocol(pDenoiseBFlow, wait=True)
         setOfBFlowDenoisedTomograms = pDenoiseBFlow.outputTomograms
 
         # some general assertions

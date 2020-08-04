@@ -10,6 +10,7 @@ from setuptools import setup, find_packages
 # To use a consistent encoding
 from codecs import open
 from os import path
+from jjsoft import __version__
 
 here = path.abspath(path.dirname(__file__))
 
@@ -22,7 +23,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='scipion-em-jjsoft',  # Required
-    version='3.0.0',  # Required
+    version=__version__,  # Required
     description='jjsoft ready to use in scipion.',  # Required
     long_description=long_description,  # Optional
     url='https://github.com/scipion-em/scipion-em-jjsoft',  # Optional

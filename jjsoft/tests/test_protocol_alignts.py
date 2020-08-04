@@ -28,10 +28,10 @@
 
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import greenStr
-from imod.protocols import ProtImodXcorr, ProtFiducialModel
+from imod.protocols import ProtImodXcorrPrealignment, ProtImodFiducialAlignment
 
-from jjsoft.protocols.protocol_align_ts import JjsoftAlignTs
-from jjsoft.protocols.protocol_motion_compensation import JjsoftAlignReconstructTomogram
+from jjsoft.protocols.protocol_align_ts import ProtJjsoftAlignTs
+from jjsoft.protocols.protocol_motion_compensation import ProtJjsoftAlignReconstructTomogram
 
 from tomo.protocols.protocol_ts_import import ProtImportTs
 
@@ -44,60 +44,58 @@ class TestAlignTs(BaseTest):
         setupTestProject(cls)  # defined in BaseTest, creates cls.proj
         cls.jjsoftDataTest = DataSet.getDataSet('tomo-em')
         cls.getFile = cls.jjsoftDataTest.getFile('etomo')
+        cls.setOfTs = cls._runImportTiltSeries()
+        cls.setOfXcorrTs = cls._runXcorrPrealignment()
+        cls.setOfFiducials, cls.setOfFiducialTs = cls._runFiducialModel()
 
-        def _runImportTiltSeries():
-            protImport = cls.newProtocol(
-                ProtImportTs,
-                filesPath=cls.getFile,
-                filesPattern='BB{TS}.st',
-                minAngle=-55,
-                maxAngle=65,
-                stepAngle=2,
-                voltage=300,
-                magnification=105000,
-                sphericalAberration=2.7,
-                amplitudeContrast=0.1,
-                samplingRate=1.35,
-                doseInitial=0,
-                dosePerFrame=0.3)
-            cls.launchProtocol(protImport, wait=True)
-            return protImport
+    @classmethod
+    def _runImportTiltSeries(cls):
+        protImport = cls.newProtocol(
+            ProtImportTs,
+            filesPath=cls.getFile,
+            filesPattern='BB{TS}.st',
+            minAngle=-55,
+            maxAngle=65,
+            stepAngle=2,
+            voltage=300,
+            magnification=105000,
+            sphericalAberration=2.7,
+            amplitudeContrast=0.1,
+            samplingRate=1.35,
+            doseInitial=0,
+            dosePerFrame=0.3)
+        cls.launchProtocol(protImport, wait=True)
+        return protImport.outputTiltSeries
 
-        def _runXcorrPrealignment(inputTS):
-            protXcorr = cls.newProtocol(ProtImodXcorr,
-                                         inputSetOfTiltSeries=inputTS,
-                                         computeAlignment=1,
-                                         binning=1,
-                                         rotationAngle=0.0)
-            cls.launchProtocol(protXcorr)
-            return protXcorr
+    @classmethod
+    def _runXcorrPrealignment(cls):
+        protXcorr = cls.newProtocol(ProtImodXcorrPrealignment,
+                                    inputSetOfTiltSeries=cls.setOfTs,
+                                    computeAlignment=1,
+                                    binning=1,
+                                    rotationAngle=0.0)
+        cls.launchProtocol(protXcorr)
+        return protXcorr.outputSetOfTiltSeries
 
-        def _runFiducialModel(xcorrTs):
-            protFiducials = cls.newProtocol(ProtFiducialModel,
-                                        inputSetOfTiltSeries=xcorrTs,
+    @classmethod
+    def _runFiducialModel(cls):
+        protFiducials = cls.newProtocol(ProtImodFiducialAlignment,
+                                        inputSetOfTiltSeries=cls.setOfXcorrTs,
                                         fiducialDiameter=4.95,
                                         binning=1)
-            cls.launchProtocol(protFiducials)
-            return protFiducials
-
-
-        cls.setOfTs = _runImportTiltSeries().outputTiltSeries
-        cls.setOfXcorrTs = _runXcorrPrealignment(cls.setOfTs).outputSetOfTiltSeries
-        outFiducial = _runFiducialModel(cls.setOfXcorrTs)
-        cls.setOfFiducials = outFiducial.outputFiducialModelNoGaps
-        cls.setOfFiducialTs = outFiducial.outputSetOfTiltSeries
-
+        cls.launchProtocol(protFiducials)
+        return protFiducials.outputFiducialModelNoGaps, protFiducials.outputSetOfTiltSeries
 
     # The tests themselves.
     #
     def testWarpAlign(self):
-        print ("\n", greenStr(" Test Ts alignment with warpalign".center(75, '-')))
+        print ("\n", greenStr(" Test Ts alignment with warpalign ".center(75, '-')))
 
         # preparing and launching the protocol
-        pwarpalign = self.proj.newProtocol(JjsoftAlignTs,
-                                        inputSetOfTiltSeries=self.setOfFiducialTs,
-                                        inputSetOfLandmarkModels=self.setOfFiducials)
-        self.proj.launchProtocol(pwarpalign, wait=True)
+        pwarpalign = self.newProtocol(ProtJjsoftAlignTs,
+                                      inputSetOfTiltSeries=self.setOfFiducialTs,
+                                      inputSetOfLandmarkModels=self.setOfFiducials)
+        self.launchProtocol(pwarpalign, wait=True)
         setOfAlignedTs = pwarpalign.outputInterpolatedSetOfTiltSeries
 
         # some general assertions
@@ -110,10 +108,10 @@ class TestAlignTs(BaseTest):
         print("\n", greenStr(" Test Ts alignment and tomogram reconstruction with Jjsof".center(75, '-')))
 
         # preparing and launching the protocol
-        palireco = self.proj.newProtocol(JjsoftAlignReconstructTomogram,
-                                           inputSetOfTiltSeries=self.setOfFiducialTs,
-                                           inputSetOfLandmarkModels=self.setOfFiducials)
-        self.proj.launchProtocol(palireco, wait=True)
+        palireco = self.newProtocol(ProtJjsoftAlignReconstructTomogram,
+                                    inputSetOfTiltSeries=self.setOfFiducialTs,
+                                    inputSetOfLandmarkModels=self.setOfFiducials)
+        self.launchProtocol(palireco, wait=True)
         setOfTomograms = palireco.outputTomograms
 
         # some general assertions

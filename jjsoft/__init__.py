@@ -28,39 +28,48 @@
 This package contains the protocols and data for jjsoft.0
 """
 import os
+from os.path import join
+
 import pwem
 
 from pyworkflow.utils import Environ
 from .constants import JJSOFT_HOME
 
+__version__ = '3.0.0'
+
 class Plugin(pwem.Plugin):
     _homeVar = JJSOFT_HOME
     _pathVars = [JJSOFT_HOME]
-
 
     @classmethod
     def _defineVariables(cls):
         cls._defineEmVar(JJSOFT_HOME, "jjsoft")
 
+    @classmethod
+    def getTomoBFlowProgram(cls):
+        return join(cls.getHome(), 'tomobflow', 'bin', 'tomobflow')
 
     @classmethod
-    def getEnviron(cls):
-        """ Setup the environment variables needed to launch Jj software. """
-        environ = Environ(os.environ)
+    def getTomoEEDProgram(cls):
+        return join(cls.getHome(), 'tomoeed', 'bin', 'tomoeed')
 
-        environ.update({
-            'PATH': os.path.join(cls.getVar(JJSOFT_HOME))
-        }, position=Environ.BEGIN)
+    @classmethod
+    def getAlignProgramsPath(cls):
+        return join(cls.getHome(), 'tomoalign_Jan2019_linux', 'bin')
 
-        environ.update({
-            'PATH': os.path.join(cls.getVar(JJSOFT_HOME),'bin')
-        }, position=Environ.BEGIN)
+    @classmethod
+    def getTomowarpalignProgram(cls):
+        return join(cls.getAlignProgramsPath(), 'tomowarpalign')
 
-        return environ
+    @classmethod
+    def getTomoAlignProgram(cls):
+        return join(cls.getAlignProgramsPath(), 'tomoalign')
+
+    @classmethod
+    def getTomoRecProgram(cls):
+        return join(cls.getHome(), 'tomo3d_January2015', 'bin', 'tomo3d')
 
     @classmethod
     def isVersionActive(cls):
         return cls.getActiveVersion().startswith("")
 
-
-pwem.Domain.registerPlugin(__name__)

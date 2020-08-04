@@ -23,6 +23,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from jjsoft import Plugin
 from tomo.protocols import ProtTomoBase
 
 from pwem.protocols import EMProtocol
@@ -35,7 +36,8 @@ from tomo.convert import writeTiStack
 import tomo.objects as tomoObj
 from imod.utils import formatTransformFile
 
-class JjsoftAlignTs(EMProtocol, ProtTomoBase):
+
+class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
     """ Aligning the tilt series using the fiducial positions and motion compensation with tomowarpalign.
     Software from : https://sites.google.com/site/3demimageprocessing/
     Returns the set of aligned tilt series
@@ -108,7 +110,7 @@ class JjsoftAlignTs(EMProtocol, ProtTomoBase):
             params = ''
             args = '-a {} -n {}'.format(aligncom, newstcom)
             args += params
-            self.runJob('tomowarpalign', args)
+            self.runJob(Plugin.getTomowarpalignProgram(), args)
 
     def computeInterpolatedStackStep(self):
         outputInterpolatedSetOfTiltSeries = self.getOutputInterpolatedSetOfTiltSeries()

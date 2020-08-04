@@ -23,6 +23,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from jjsoft import Plugin
 from tomo.protocols import ProtTomoBase
 
 from pwem.protocols import EMProtocol
@@ -34,7 +35,8 @@ import pyworkflow as pw
 from tomo.convert import writeTiStack
 from imod.utils import formatTransformFile
 
-class JjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
+
+class ProtJjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
     """ Reconstruct tomograms by aligning the tilt series using the fiducial positions with tomoalign
     and then reconstructs the tomogram with tomorec.
     Software from : https://sites.google.com/site/3demimageprocessing/
@@ -195,7 +197,7 @@ class JjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
 
             args = '-i {} -a {} -o {}'.format(fiducial_text, AnglesPath, out_bin)
             args += params
-            self.runJob('tomoalign', args)
+            self.runJob(Plugin.getTomoAlignProgram(), args)
 
     def reconstructTomogramStep(self):
         for fidu in self.inputSetOfLandmarkModels.get():
@@ -207,11 +209,13 @@ class JjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
 
             params = ''
             if self.weighting.get() == 1:
-                params += ' -w ramp'
+                params += ' -w on ramp'
             elif self.weighting.get() == 2:
-                params += ' -w hamming'
+                params += ' -w on hamming'
             elif self.weighting.get() == 3:
-                params += ' -w sirt -l {}'.format(self.sirtIter.get())
+                params += ' -w on sirt -l {}'.format(self.sirtIter.get())
+            else:
+                params += ' -w off'
 
             if self.setShape.get() == 0:
                 if self.width.get() != 0:
@@ -228,7 +232,7 @@ class JjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
 
             args = '-a {} -i {} -o {}'.format(align_bin, TsPath, out_tomo_path)
             args += params
-            self.runJob('tomorec', args)
+            self.runJob(Plugin.getTomoRecProgram(), args)
             self.outputFiles.append(out_tomo_path)
 
     def createOutputStep(self):

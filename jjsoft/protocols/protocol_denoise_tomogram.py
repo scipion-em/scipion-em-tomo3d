@@ -24,13 +24,15 @@
 # *
 # **************************************************************************
 from tomo.protocols import ProtTomoBase
+from jjsoft import Plugin
 
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, BooleanParam, PointerParam
 
 from tomo.objects import Tomogram, SetOfTomograms
 
-class JjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
+
+class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
     """ Denoises sets of tomograms using methods described in https://sites.google.com/site/3demimageprocessing/
     Returns the set of denoised tomograms
     """
@@ -79,7 +81,7 @@ class JjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
         self.outputFiles = []
         pre = []
         for tomo in inputTomos.iterItems():
-            stepId= self._insertFunctionStep('denoiseTomogramStep', tomo.getFileName())
+            stepId = self._insertFunctionStep('denoiseTomogramStep', tomo.getFileName())
             pre.append(stepId)
 
         self._insertFunctionStep('createOutputStep', prerequisites=pre)
@@ -139,7 +141,7 @@ class JjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
                                                   self.TimeStep.get(), self.numberOfThreads)
         out_tomo_path = self._getExtraPath('denoisedBflow_'+inp_tomo_path.split('/')[-1])
         args = '{} {} {}'.format(params, inp_tomo_path, out_tomo_path)
-        self.runJob('tomobflow', args)
+        self.runJob(Plugin.getTomoBFlowProgram(), args)
         return out_tomo_path
 
     def call_EED(self, inp_tomo_path):
@@ -151,7 +153,7 @@ class JjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
                                                       self.TimeStep.get(),self.Lambda.get())
         out_tomo_path = self._getExtraPath('denoisedEED_'+inp_tomo_path.split('/')[-1])
         args = '{} {} {}'.format(params, inp_tomo_path, out_tomo_path)
-        self.runJob('tomoeed', args)
+        self.runJob(Plugin.getTomoEEDProgram(), args)
         return out_tomo_path
 
 

@@ -35,6 +35,7 @@ import pwem
 from pyworkflow.utils import Environ
 from .constants import JJSOFT_HOME
 
+__version__ = '3.0.0'
 
 class Plugin(pwem.Plugin):
     _homeVar = JJSOFT_HOME

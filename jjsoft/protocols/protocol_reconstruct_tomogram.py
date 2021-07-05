@@ -33,6 +33,7 @@ from tomo.objects import Tomogram
 import os
 import pyworkflow as pw
 from tomo.convert import writeTiStack
+from imod import Plugin as PluginImod
 
 
 class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
@@ -115,12 +116,16 @@ class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
             workingFolder = self._getExtraPath(tsId)
             prefix = os.path.join(workingFolder, tsId)
             pw.utils.makePath(workingFolder)
-            tiList = [ti.clone() for ti in ts]
-            tiList.sort(key=lambda ti: ti.getTiltAngle())
-            tiList.reverse()
-            writeTiStack(tiList,
-                         outputStackFn=prefix + '.st',
-                         outputTltFn=prefix + '.rawtlt')
+
+            outputStackFn=prefix + '.st'
+            outputTltFn=prefix + '.rawtlt'
+
+            ts.applyTransform(outputStackFn)
+            ts.generateTltFile(outputTltFn)
+            # tiList = [ti.clone() for ti in ts]
+            # tiList.sort(key=lambda ti: ti.getTiltAngle())
+            # tiList.reverse()
+            # writeTiStack(tiList, outputStackFn=prefix + '.st:mrc', outputTltFn=prefix + '.rawtlt')
 
     def reconstructTomogramStep(self, tsId, workingFolder):
         # We start preparing writing those elements we're using as input to keep them untouched
@@ -140,7 +145,18 @@ class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
         args = '-i {} -a {} -o {} -t {}'.format(TsPath, AnglesPath, out_tomo_path, self.numberOfThreads)
         args+=params
         self.runJob(Plugin.getTomoRecProgram(), args)
-        self.outputFiles.append(out_tomo_path)
+
+        out_tomo_rx_path = self.rxTomogram(tsId, workingFolder)
+        self.outputFiles.append(out_tomo_rx_path)
+
+    def rxTomogram(self, tsId, workingFolder):
+        out_tomo_path = workingFolder + '/tomo_{}.mrc'.format(tsId)
+        out_tomo_rx_path = workingFolder + '/tomo_rx_{}.mrc'.format(tsId)
+        args = '-rx %s %s' %(out_tomo_path, out_tomo_rx_path)
+
+        PluginImod.runImod(self, 'trimvol', args)
+        return out_tomo_rx_path
+
 
     def createOutputStep(self):
         outputTomos = self._createSetOfTomograms()

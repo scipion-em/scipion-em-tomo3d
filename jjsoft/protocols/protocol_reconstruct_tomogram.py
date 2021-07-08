@@ -23,6 +23,11 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from os.path import join
+from pwem import ROT_X_90
+from pwem.emlib.image import ImageHandler
+from pwem.objects import TransformationsFactory
+
 from jjsoft import Plugin
 from tomo.protocols import ProtTomoBase
 
@@ -32,8 +37,6 @@ from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatP
 from tomo.objects import Tomogram
 import os
 import pyworkflow as pw
-from tomo.convert import writeTiStack
-from imod import Plugin as PluginImod
 
 
 class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
@@ -122,10 +125,6 @@ class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
 
             ts.applyTransform(outputStackFn)
             ts.generateTltFile(outputTltFn)
-            # tiList = [ti.clone() for ti in ts]
-            # tiList.sort(key=lambda ti: ti.getTiltAngle())
-            # tiList.reverse()
-            # writeTiStack(tiList, outputStackFn=prefix + '.st:mrc', outputTltFn=prefix + '.rawtlt')
 
     def reconstructTomogramStep(self, tsId, workingFolder):
         # We start preparing writing those elements we're using as input to keep them untouched
@@ -146,36 +145,32 @@ class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
         args+=params
         self.runJob(Plugin.getTomoRecProgram(), args)
 
-        out_tomo_rx_path = self.rxTomogram(tsId, workingFolder)
+        out_tomo_rx_path = self.rotXTomo(tsId, workingFolder)
         self.outputFiles.append(out_tomo_rx_path)
 
-    def rxTomogram(self, tsId, workingFolder):
-        out_tomo_path = workingFolder + '/tomo_{}.mrc'.format(tsId)
-        out_tomo_rx_path = workingFolder + '/tomo_rx_{}.mrc'.format(tsId)
-        args = '-rx %s %s' %(out_tomo_path, out_tomo_rx_path)
-
-        PluginImod.runImod(self, 'trimvol', args)
-        return out_tomo_rx_path
-
+    def rotXTomo(self, tsId, workingFolder):
+        """Result of the reconstruction must be rotated 90 degrees around the X
+        axis to recover the original orientation (due to jjsoft design)"""
+        inTomoFile = join(workingFolder, 'tomo_%s.mrc' % tsId)
+        outTomoFile = join(workingFolder, 'tomo_rx_%s.mrc' % tsId)
+        ih = ImageHandler()
+        ih.rotateVolume(inTomoFile, outTomoFile, TransformationsFactory.create(ROT_X_90))  # Rot 90 deg around X axis
+        return outTomoFile
 
     def createOutputStep(self):
         outputTomos = self._createSetOfTomograms()
         outputTomos.copyInfo(self.inputSetOfTiltSeries.get())
-        #outputTomos.setSamplingRate(self.inputSetOfTiltSeries.getSamplingRate())
 
         for i, inp_ts in enumerate(self.inputSetOfTiltSeries.get()):
             tomo_path = self.outputFiles[i]
             tomo = Tomogram()
             tomo.setLocation(tomo_path)
             tomo.setSamplingRate(inp_ts.getSamplingRate())
-            # tomo.setAcquisition(inp_ts.getAcquisition())
             outputTomos.append(tomo)
-
 
         self._defineOutputs(outputTomograms=outputTomos)
         self.outputTomograms=outputTomos
         self._defineSourceRelation(self.inputSetOfTiltSeries, outputTomos)
-
 
     # --------------------------- INFO functions --------------------------------------------
     def _summary(self):

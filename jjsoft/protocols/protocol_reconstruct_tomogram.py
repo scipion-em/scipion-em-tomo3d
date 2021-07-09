@@ -167,6 +167,8 @@ class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
             tomo = Tomogram()
             tomo.setLocation(tomo_path)
             tomo.setSamplingRate(inp_ts.getSamplingRate())
+            tomo.setOrigin()
+            tomo.setTsId(inp_ts.getTsId())
             outputTomos.append(tomo)
 
         self._defineOutputs(outputTomograms=outputTomos)

@@ -24,9 +24,9 @@
 # *
 # **************************************************************************
 from os.path import join
-from pwem import ROT_X_90
+
 from pwem.emlib.image import ImageHandler
-from pwem.objects import TransformationsFactory
+from pwem.objects import Transform
 
 from jjsoft import Plugin
 from tomo.protocols import ProtTomoBase
@@ -154,7 +154,8 @@ class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
         inTomoFile = join(workingFolder, 'tomo_%s.mrc' % tsId)
         outTomoFile = join(workingFolder, 'tomo_rx_%s.mrc' % tsId)
         ih = ImageHandler()
-        ih.rotateVolume(inTomoFile, outTomoFile, TransformationsFactory.create(ROT_X_90))  # Rot 90 deg around X axis
+        # Rot 90 deg around X axis
+        ih.rotateVolume(inTomoFile, outTomoFile, Transform.create(Transform.ROT_X_90_CLOCKWISE))
         return outTomoFile
 
     def createOutputStep(self):

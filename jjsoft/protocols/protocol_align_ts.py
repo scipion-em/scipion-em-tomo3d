@@ -23,6 +23,8 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from pyworkflow.utils import makePath
+
 from jjsoft import Plugin
 from tomo.protocols import ProtTomoBase
 
@@ -31,7 +33,6 @@ from pyworkflow.protocol.params import PointerParam, FloatParam
 
 import imod.utils as utils
 import os
-import pyworkflow as pw
 from tomo.convert import writeTiStack
 import tomo.objects as tomoObj
 from imod.utils import formatTransformFile
@@ -84,7 +85,7 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
             tsId = ts.getTsId()
             workingFolder = self._getExtraPath(tsId)
             prefix = os.path.join(workingFolder, tsId)
-            pw.utils.makePath(workingFolder)
+            makePath(workingFolder)
             tiList = [ti.clone() for ti in ts]
             tiList.sort(key=lambda ti: ti.getTiltAngle())
             tiList.reverse()

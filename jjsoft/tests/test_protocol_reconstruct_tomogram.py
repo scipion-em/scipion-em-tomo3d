@@ -25,16 +25,19 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-
+import numpy as np
+from os.path import exists
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
-from pyworkflow.utils import greenStr
-
+from pyworkflow.utils import magentaStr
 from jjsoft.protocols.protocol_reconstruct_tomogram import ProtJjsoftReconstructTomogram
-
 from tomo.protocols.protocol_ts_import import ProtImportTs
 
 
 class TestTomogramReconstruction(BaseTest):
+
+    jjsoftDataTest = None
+    getFile = None
+    samplingRate = 1.35
 
     @classmethod
     def setUpClass(cls):
@@ -57,14 +60,14 @@ class TestTomogramReconstruction(BaseTest):
             magnification=105000,
             sphericalAberration=2.7,
             amplitudeContrast=0.1,
-            samplingRate=1.35,
+            samplingRate=cls.samplingRate,
             doseInitial=0,
             dosePerFrame=0.3)
         cls.launchProtocol(protImport, wait=True)
         return protImport.outputTiltSeries
 
     def testReconstructionWBP(self):
-        print ("\n", greenStr(" Test tomo3D reconstruction with WBP".center(75, '-')))
+        print ("\n", magentaStr(" Test tomo3D reconstruction with WBP".center(75, '-')))
 
         # preparing and launching the protocol
         ptomo3D = self.newProtocol(ProtJjsoftReconstructTomogram,
@@ -73,14 +76,11 @@ class TestTomogramReconstruction(BaseTest):
         self.launchProtocol(ptomo3D, wait=True)
         setOfReconstructedTomograms = ptomo3D.outputTomograms
 
-        # some general assertions           
-        self.assertIsNotNone(setOfReconstructedTomograms,           
-                             "There was some problem with the output")
-        self.assertEqual(setOfReconstructedTomograms.getSize(), self.setOfTs.getSize(),
-                         "The number of the denoised tomograms is wrong")
+        # check results
+        self._checkResults(setOfReconstructedTomograms)
 
     def testReconstructionSIRT(self):
-        print ("\n", greenStr(" Test tomo3D reconstruction with SIRT".center(75, '-')))
+        print ("\n", magentaStr(" Test tomo3D reconstruction with SIRT".center(75, '-')))
 
         # preparing and launching the protocol
         ptomo3D = self.newProtocol(ProtJjsoftReconstructTomogram,
@@ -90,8 +90,25 @@ class TestTomogramReconstruction(BaseTest):
         self.launchProtocol(ptomo3D, wait=True)
         setOfReconstructedTomograms = ptomo3D.outputTomograms
 
-        # some general assertions
-        self.assertIsNotNone(setOfReconstructedTomograms,
-                             "There was some problem with the output")
-        self.assertEqual(setOfReconstructedTomograms.getSize(), self.setOfTs.getSize(),
-                         "The number of the denoised tomograms is wrong")
+        # check results
+        self._checkResults(setOfReconstructedTomograms)
+
+    def _checkResults(self, outputSet):
+        # Set of tomograms checks
+        self.assertIsNotNone(outputSet, "There was some problem with the output")
+        self.assertEqual(outputSet.getSize(), self.setOfTs.getSize(), "The number of the denoised tomograms is wrong")
+        self.assertEqual(outputSet.getSamplingRate(), self.samplingRate)
+        # Tomograms checks
+        testTsIds = ['b', 'a']
+        testOrigin = np.array([
+            [1.0, 0.0, 0.0, -345.6],
+            [0.0, 1.0, 0.0, -345.6],
+            [0.0, 0.0, 1.0, -345.6],
+            [0.0, 0.0, 0.0, 1.0]])
+        for i, tomo in enumerate(outputSet):
+            self.assertTrue(exists(tomo.getFileName()))
+            self.assertEqual(tomo.getTsId(), testTsIds[i])
+            self.assertEqual(tomo.getSamplingRate(), self.samplingRate)
+            self.assertTrue(np.allclose(tomo.getOrigin(force=True).getMatrix(), testOrigin, rtol=1e-2))
+
+

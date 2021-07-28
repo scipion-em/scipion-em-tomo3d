@@ -25,17 +25,20 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from os.path import exists
 
-
+import numpy as np
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
-from pyworkflow.utils import greenStr
-
-from jjsoft.protocols.protocol_denoise_tomogram import ProtJjsoftProtDenoiseTomogram
-
+from pyworkflow.utils import magentaStr
+from jjsoft.protocols.protocol_denoise_tomogram import ProtJjsoftProtDenoiseTomogram, DENOISE_EED, DENOISE_BF
 from tomo.protocols.protocol_import_tomograms import ProtImportTomograms
 
 
 class TestTomogramDenoising(BaseTest):
+
+    jjsoftDataTest = None
+    setOfTomograms = None
+    samplingRate = 1.35
 
     @classmethod
     def setUpClass(cls):
@@ -51,7 +54,7 @@ class TestTomogramDenoising(BaseTest):
         """
         pImpTomograms = cls.newProtocol(ProtImportTomograms,
                                         filesPath=cls.jjsoftDataTest.getFile('tomo'),
-                                        samplingRate=1.35,
+                                        samplingRate=cls.samplingRate,
                                         acquisitionAngleMax=40.0,
                                         acquisitionAngleMin=-40.0)
 
@@ -63,41 +66,47 @@ class TestTomogramDenoising(BaseTest):
         # Setting the set of tomograms object
         return pImpTomograms.outputTomograms
 
-    def testDenoisingEED(self):
-        print ("\n", greenStr(" Test EED denoising ".center(75, '-')))
-
+    def _runDenoising(self, denoisingMethod):
         # preparing and launching the protocol
         pDenoiseEED = self.newProtocol(ProtJjsoftProtDenoiseTomogram,
                                        inputSetTomograms=self.setOfTomograms,
-                                       method=0,
+                                       method=denoisingMethod,
                                        SigmaGaussian=0.5,
                                        nIter=1,
                                        TimeStep=0.1,
                                        Lambda=-1.0)
         self.launchProtocol(pDenoiseEED, wait=True)
-        setOfEEDDenoisedTomograms = pDenoiseEED.outputTomograms
+        return pDenoiseEED.outputTomograms
 
-        # some general assertions
-        self.assertIsNotNone(setOfEEDDenoisedTomograms,
-                             "There was some problem with the output")
-        self.assertEqual(setOfEEDDenoisedTomograms.getSize(), self.setOfTomograms.getSize(),
-                         "The number of the denoised tomograms is wrong")
+    def testDenoisingEED(self):
+        print("\n", magentaStr(" Test EED denoising ".center(75, '-')))
+        # preparing and launching the protocol
+        setOfEEDDenoisedTomograms = self._runDenoising(DENOISE_EED)
+        # check results
+        self._checkResults(setOfEEDDenoisedTomograms)
+
 
     def testDenoisingBFlow(self):
-        print ("\n", greenStr(" Test BFlow denoising ".center(75, '-')))
-
+        print ("\n", magentaStr(" Test BFlow denoising ".center(75, '-')))
         # preparing and launching the protocol
-        pDenoiseBFlow = self.newProtocol(ProtJjsoftProtDenoiseTomogram,
-                                         inputSetTomograms=self.setOfTomograms,
-                                         method=1,
-                                         SigmaGaussian=0.5,
-                                         nIter=1,
-                                         TimeStep=0.1)
-        self.launchProtocol(pDenoiseBFlow, wait=True)
-        setOfBFlowDenoisedTomograms = pDenoiseBFlow.outputTomograms
+        setOfEEDDenoisedTomograms = self._runDenoising(DENOISE_BF)
+        # check results
+        self._checkResults(setOfEEDDenoisedTomograms)
 
-        # some general assertions
-        self.assertIsNotNone(setOfBFlowDenoisedTomograms,
-                             "There was some problem with the output")
-        self.assertEqual(setOfBFlowDenoisedTomograms.getSize(), self.setOfTomograms.getSize(),
+    def _checkResults(self, outputSet):
+        self.assertIsNotNone(outputSet, "There was some problem with the output")
+        self.assertEqual(outputSet.getSamplingRate(), self.samplingRate)
+        self.assertEqual(outputSet.getSize(), self.setOfTomograms.getSize(),
                          "The number of the denoised tomograms is wrong")
+
+        # Tomograms checks
+        testOrigin = np.array([
+            [1.0, 0.0, 0.0, -691.2],
+            [0.0, 1.0, 0.0, -691.2],
+            [0.0, 0.0, 1.0, -345.6],
+            [0.0, 0.0, 0.0, 1.0]])
+        for tomo in outputSet:
+            self.assertTrue(exists(tomo.getFileName()))
+            self.assertFalse(tomo.getTsId())  # Tomograms were imported, so they don't have tsId
+            self.assertEqual(tomo.getSamplingRate(), self.samplingRate)
+            self.assertTrue(np.allclose(tomo.getOrigin(force=True).getMatrix(), testOrigin, rtol=1e-2))

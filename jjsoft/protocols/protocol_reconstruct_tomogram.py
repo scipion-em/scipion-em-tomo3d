@@ -23,6 +23,12 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from os.path import join
+
+from pwem.emlib.image import ImageHandler
+from pwem.objects import Transform
+from pyworkflow.utils import makePath
+
 from jjsoft import Plugin
 from tomo.protocols import ProtTomoBase
 
@@ -31,8 +37,6 @@ from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatP
 
 from tomo.objects import Tomogram
 import os
-import pyworkflow as pw
-from tomo.convert import writeTiStack
 
 
 class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
@@ -95,40 +99,40 @@ class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
     def _insertAllSteps(self):
         """ Insert every step of the protocol"""
         pre1 = []
-        stepId = self._insertFunctionStep('convertInputStep')
+        stepId = self._insertFunctionStep(self.convertInputStep)
         pre1.append(stepId)
 
         pre = []
         self.outputFiles = []
         for ts in self.inputSetOfTiltSeries.get():
             tsId = ts.getTsId()
-            workingFolder = self._getExtraPath(tsId)
-            stepId = self._insertFunctionStep('reconstructTomogramStep', tsId, workingFolder, prerequisites=pre1)
+            workingFolder = self._getTmpPath(tsId)
+            stepId = self._insertFunctionStep(self.reconstructTomogramStep, tsId, workingFolder, prerequisites=pre1)
             pre.append(stepId)
 
-        self._insertFunctionStep('createOutputStep', prerequisites=pre)
+        self._insertFunctionStep(self.createOutputStep, prerequisites=pre)
 
     # --------------------------- STEPS functions --------------------------------------------
     def convertInputStep(self):
         for ts in self.inputSetOfTiltSeries.get():
             tsId = ts.getTsId()
-            workingFolder = self._getExtraPath(tsId)
+            workingFolder = self._getTmpPath(tsId)
             prefix = os.path.join(workingFolder, tsId)
-            pw.utils.makePath(workingFolder)
-            tiList = [ti.clone() for ti in ts]
-            tiList.sort(key=lambda ti: ti.getTiltAngle())
-            tiList.reverse()
-            writeTiStack(tiList,
-                         outputStackFn=prefix + '.st',
-                         outputTltFn=prefix + '.rawtlt')
+            makePath(workingFolder)
+
+            outputStackFn = prefix + '.st'
+            outputTltFn = prefix + '.rawtlt'
+
+            ts.applyTransform(outputStackFn)
+            ts.generateTltFile(outputTltFn)
 
     def reconstructTomogramStep(self, tsId, workingFolder):
         # We start preparing writing those elements we're using as input to keep them untouched
         TsPath, AnglesPath = self.get_Ts_files(workingFolder, tsId)
         out_tomo_path = workingFolder + '/tomo_{}.mrc'.format(tsId)
-        params=''
-        if self.method==1:
-            params+=' -S -l '+str(self.nIterations)
+        params = ''
+        if self.method == 1:
+            params += ' -S -l '+str(self.nIterations)
         if self.setShape.get() == 0:
             if self.width.get() != 0:
                 params += ' -x {}'.format(self.width.get())
@@ -138,28 +142,39 @@ class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
                 params += ' -z {}'.format(self.height.get())
 
         args = '-i {} -a {} -o {} -t {}'.format(TsPath, AnglesPath, out_tomo_path, self.numberOfThreads)
-        args+=params
+        args += params
         self.runJob(Plugin.getTomoRecProgram(), args)
-        self.outputFiles.append(out_tomo_path)
+
+        out_tomo_rx_path = self.rotXTomo(tsId)
+        self.outputFiles.append(out_tomo_rx_path)
+
+    def rotXTomo(self, tsId):
+        """Result of the reconstruction must be rotated 90 degrees around the X
+        axis to recover the original orientation (due to jjsoft design)"""
+        outPath = self._getExtraPath(tsId)
+        os.mkdir(outPath)
+        inTomoFile = join(self._getTmpPath(tsId), 'tomo_%s.mrc' % tsId)
+        outTomoFile = join(outPath, 'tomo_%s.mrc' % tsId)
+        ih = ImageHandler()
+        # Rot 90 deg around X axis
+        ih.rotateVolume(inTomoFile, outTomoFile, Transform.create(Transform.ROT_X_90_CLOCKWISE))
+        return outTomoFile
 
     def createOutputStep(self):
         outputTomos = self._createSetOfTomograms()
         outputTomos.copyInfo(self.inputSetOfTiltSeries.get())
-        #outputTomos.setSamplingRate(self.inputSetOfTiltSeries.getSamplingRate())
 
         for i, inp_ts in enumerate(self.inputSetOfTiltSeries.get()):
             tomo_path = self.outputFiles[i]
             tomo = Tomogram()
             tomo.setLocation(tomo_path)
             tomo.setSamplingRate(inp_ts.getSamplingRate())
-            # tomo.setAcquisition(inp_ts.getAcquisition())
+            tomo.setOrigin()
+            tomo.setTsId(inp_ts.getTsId())
             outputTomos.append(tomo)
 
-
         self._defineOutputs(outputTomograms=outputTomos)
-        self.outputTomograms=outputTomos
         self._defineSourceRelation(self.inputSetOfTiltSeries, outputTomos)
-
 
     # --------------------------- INFO functions --------------------------------------------
     def _summary(self):

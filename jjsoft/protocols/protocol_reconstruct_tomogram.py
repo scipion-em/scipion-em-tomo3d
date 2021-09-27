@@ -25,6 +25,8 @@
 # **************************************************************************
 from os.path import join
 
+import mrcfile
+import numpy as np
 from pwem.emlib.image import ImageHandler
 from pwem.objects import Transform
 from pyworkflow.utils import makePath
@@ -155,9 +157,13 @@ class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
         os.mkdir(outPath)
         inTomoFile = join(self._getTmpPath(tsId), 'tomo_%s.mrc' % tsId)
         outTomoFile = join(outPath, 'tomo_%s.mrc' % tsId)
-        ih = ImageHandler()
-        # Rot 90 deg around X axis
-        ih.rotateVolume(inTomoFile, outTomoFile, Transform.create(Transform.ROT_X_90_CLOCKWISE))
+
+        with mrcfile.open(inTomoFile, mode='r', permissive=True) as mrc:
+            rotData = np.rot90(mrc.data)
+
+        with mrcfile.open(outTomoFile, mode='w+') as mrc:
+            mrc.set_data(rotData)
+
         return outTomoFile
 
     def createOutputStep(self):

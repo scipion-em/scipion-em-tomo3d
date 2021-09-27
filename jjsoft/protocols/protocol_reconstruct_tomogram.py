@@ -163,9 +163,7 @@ class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
 
         with mrcfile.open(outTomoFile, mode='w+') as mrc:
             mrc.set_data(rotData)
-        # ih = ImageHandler()
-        # # Rot 90 deg around X axis
-        # ih.rotateVolume(inTomoFile, outTomoFile, Transform.create(Transform.ROT_Y_90_CLOCKWISE))
+
         return outTomoFile
 
     def createOutputStep(self):

@@ -25,17 +25,14 @@
 # *
 # **************************************************************************
 """
-This package contains the protocols and data for jjsoft.0
+This package contains the protocols and data for jjsoft
 """
-import os
 from os.path import join
-
 import pwem
-
-from pyworkflow.utils import Environ
 from .constants import JJSOFT_HOME
 
-__version__ = '3.0.1'
+__version__ = '3.0.2'
+
 
 class Plugin(pwem.Plugin):
     _homeVar = JJSOFT_HOME

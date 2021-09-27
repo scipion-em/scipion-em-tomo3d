@@ -27,9 +27,12 @@ from tomo.protocols import ProtTomoBase
 from jjsoft import Plugin
 
 from pwem.protocols import EMProtocol
-from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, BooleanParam, PointerParam
+from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, PointerParam
 
-from tomo.objects import Tomogram, SetOfTomograms
+from tomo.objects import Tomogram
+
+DENOISE_EED = 0
+DENOISE_BF = 1
 
 
 class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
@@ -37,9 +40,6 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
     Returns the set of denoised tomograms
     """
     _label = 'denoise tomogram'
-
-    DENOISE_EED = 0
-    DENOISE_BF = 1
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
@@ -52,7 +52,8 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
                       label='Set Of Tomograms',
                       help='Select one set of tomograms')
         form.addParam('method', EnumParam,
-                      choices=['Edge Enhancing Diffusion (EED)','BFlow'], default=0,
+                      choices=['Edge Enhancing Diffusion (EED)', 'BFlow'],
+                      default=DENOISE_EED,
                       label='Denoising method',
                       help='Denoising method to use')
         form.addSection(label='Parameters')
@@ -89,18 +90,17 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
     # --------------------------- STEPS functions --------------------------------------------
     def denoiseTomogramStep(self, inp_tomo_path):
         # We start preparing writing those elements we're using as input to keep them untouched
-        if self.method.get() == 0:
+        if self.method.get() == DENOISE_EED:
             print('Denoising by Edge Enhancing Diffusion')
-            #Call EED
+            # call EED
             out_tomo_path = self.call_EED(inp_tomo_path)
 
-        elif  self.method.get() == 1:
+        elif self.method.get() == DENOISE_BF:
             print('Denoising by BFlow')
             # call BFlow
             out_tomo_path = self.call_BFlow(inp_tomo_path)
 
         self.outputFiles.append(out_tomo_path)
-
 
     def createOutputStep(self):
         inputTomos = self.inputSetTomograms.get()
@@ -118,7 +118,6 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
         self._defineOutputs(outputTomograms=outputTomos)
         self.outputTomograms=outputTomos
         self._defineSourceRelation(self.inputSetTomograms, outputTomos)
-
 
     # --------------------------- INFO functions --------------------------------------------
     def _summary(self):

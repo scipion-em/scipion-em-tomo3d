@@ -55,9 +55,11 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
         form.addParam('inputSetOfTiltSeries', PointerParam, important=True,
                       pointerClass='SetOfTiltSeries',
                       label='Input Tilt Series Non Interpolated')
+
         form.addParam('inputSetOfLandmarkModels', PointerParam, important=True,
                       pointerClass='SetOfLandmarkModels',
                       label='Input Fiducial Models')
+
         form.addParam('binning', FloatParam,
                       default=1.0,
                       label='Binning',
@@ -70,14 +72,14 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
     def _insertAllSteps(self):
         """ Insert every step of the protocol"""
         pre1 = []
-        stepId = self._insertFunctionStep('convertInputStep')
+        stepId = self._insertFunctionStep(self.convertInputStep)
         pre1.append(stepId)
 
         pre2 = []
-        stepId = self._insertFunctionStep('alignTsStep', prerequisites=pre1)
+        stepId = self._insertFunctionStep(self.alignTsStep, prerequisites=pre1)
         pre2.append(stepId)
 
-        self._insertFunctionStep('computeInterpolatedStackStep', prerequisites=pre2)
+        self._insertFunctionStep(self.computeInterpolatedStackStep, prerequisites=pre2)
 
     # --------------------------- STEPS functions --------------------------------------------
     def convertInputStep(self):
@@ -89,10 +91,12 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
             tiList = [ti.clone() for ti in ts]
             tiList.sort(key=lambda ti: ti.getTiltAngle())
             tiList.reverse()
+
             # Creates the st and tlt files
             writeTiStack(tiList,
                          outputStackFn=prefix + '.st',
                          outputTltFn=prefix + '.tlt')
+
             # Creates the tltxf file
             if ts.getFirstItem().hasTransform():
                 formatTransformFile(ts, prefix + '.tltxf')
@@ -111,6 +115,7 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
             params = ''
             args = '-a {} -n {}'.format(aligncom, newstcom)
             args += params
+
             self.runJob(Plugin.getTomowarpalignProgram(), args)
 
     def computeInterpolatedStackStep(self):
@@ -118,6 +123,7 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
         for ts in self.inputSetOfTiltSeries.get():
             tsId = ts.getTsId()
             extraPrefix = self._getExtraPath(tsId)
+
             # Naming output tilt series as .mrc
             args = '{}.st {}.mrc'.format(extraPrefix + '/' + tsId, extraPrefix + '/' + tsId)
             self.runJob('cp', args)
@@ -129,37 +135,28 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
             tltFileName = tsId + ".tlt"
             tltFilePath = os.path.join(self._getExtraPath(tsId), tltFileName)
             tltList = utils.formatAngleList(tltFilePath)
+
             for index, ti in enumerate(ts):
                 newTi = tomoObj.TiltImage()
                 newTi.copyInfo(ti, copyId=True)
                 newTi.setLocation(index + 1, os.path.join(extraPrefix, '%s.st' % tsId))
                 newTi.setTiltAngle(float(tltList[index]))
+
                 if self.binning > 1:
                     newTi.setSamplingRate(ti.getSamplingRate() * int(self.binning.get()))
                 newTs.append(newTi)
+
             if self.binning > 1:
                 newTs.setSamplingRate(ts.getSamplingRate() * int(self.binning.get()))
+
             newTs.write()
             outputInterpolatedSetOfTiltSeries.update(newTs)
             outputInterpolatedSetOfTiltSeries.write()
+
         self._store()
 
     def createOutputStep(self):
         pass
-
-    # --------------------------- INFO functions --------------------------------------------
-    def _summary(self):
-        summary = []
-        return summary
-
-    def _validate(self):
-        pass
-
-    def _methods(self):
-        pass
-
-    def _citations(self):
-        return ['Fernandez2018', 'Fernandez2009']
 
     # --------------------------- UTILS functions --------------------------------------------
     def getOutputInterpolatedSetOfTiltSeries(self):
@@ -167,18 +164,22 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
             outputInterpolatedSetOfTiltSeries = self._createSetOfTiltSeries(suffix='Interpolated')
             outputInterpolatedSetOfTiltSeries.copyInfo(self.inputSetOfTiltSeries.get())
             outputInterpolatedSetOfTiltSeries.setDim(self.inputSetOfTiltSeries.get().getDim())
+
             if self.binning > 1:
                 samplingRate = self.inputSetOfTiltSeries.get().getSamplingRate()
                 samplingRate *= self.binning.get()
                 outputInterpolatedSetOfTiltSeries.setSamplingRate(samplingRate)
+
             self._defineOutputs(outputInterpolatedSetOfTiltSeries=outputInterpolatedSetOfTiltSeries)
             self._defineSourceRelation(self.inputSetOfTiltSeries, outputInterpolatedSetOfTiltSeries)
+
         return self.outputInterpolatedSetOfTiltSeries
 
     def get_IMOD_files(self, prevwFolder, ts_folder, TsId):
-        '''Returns the path of the Tilt Serie and the angles files'''
+        """Returns the path of the Tilt Serie and the angles files"""
         prevprefix = os.path.join(prevwFolder, TsId)
         prefix = os.path.join(ts_folder, TsId)
+
         self.make_resid_file(prevprefix, prefix)
         aligncom = self.make_aligncom(ts_folder, TsId)
         newstcom = self.make_newstcom(ts_folder, TsId)
@@ -186,8 +187,8 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
         return aligncom, newstcom
 
     @staticmethod
-    def make_resid_file( prevprefix, prefix):
-        '''Creates the resid file in the correct format from a sfid text file'''
+    def make_resid_file(prevprefix, prefix):
+        """Creates the resid file in the correct format from a sfid text file"""
         resid_path = prefix + '.resid'
         sfid_path = prevprefix + '_noGaps.sfid'
 
@@ -206,7 +207,7 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
 
     @staticmethod
     def write_prexg_identity(ts, prexgPath):
-        '''Creates the prexg file as a identity matrix'''
+        """Creates the prexg file as a identity matrix"""
         with open(prexgPath, 'w') as f:
             for i in range(len(ts)):
                 f.write('1\t0\t0\t1\t0\t0\n')
@@ -224,12 +225,14 @@ OutputTransformFile {}.tltxf\n\
 $xfproduct -StandardInput\n\
 InputFile1 {}.prexg\n\
 InputFile2 {}.tltxf'.format(*[pathi + TsId] * 4))
+
             return aligncomPath
 
     def make_newstcom(self, ts_folder, TsId):
         '''Writes an artifitial newst.com file'''
         newstcomPath = ts_folder + '/newst.com'
         pathi = ts_folder + '/'
+
         with open(newstcomPath, 'w') as f:
             f.write('$newstack -StandardInput\n\
 InputFile	{}.st\n\
@@ -243,4 +246,20 @@ ImagesAreBinned	1.0\n\
 BinByFactor	1\n\
 #GradientFile	{}.maggrad\n\
 $if (-e ./savework) ./savework'.format(*[pathi + TsId] * 4))
+
             return newstcomPath
+
+    # --------------------------- INFO functions --------------------------------------------
+    def _summary(self):
+        summary = []
+        return summary
+
+    def _validate(self):
+        pass
+
+    def _methods(self):
+        pass
+
+    def _citations(self):
+        return ['Fernandez2018', 'Fernandez2009']
+

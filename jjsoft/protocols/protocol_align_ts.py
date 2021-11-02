@@ -119,7 +119,7 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
             tsId = ts.getTsId()
             extraPrefix = self._getExtraPath(tsId)
             #Naming output tilt series as .mrc
-            args = '{}.warpali {}.mrc'.format(extraPrefix + '/' + tsId, extraPrefix + '/' + tsId)
+            args = '{}.st {}.mrc'.format(extraPrefix + '/' + tsId, extraPrefix + '/' + tsId)
             self.runJob('cp', args)
 
             newTs = tomoObj.TiltSeries(tsId=tsId)

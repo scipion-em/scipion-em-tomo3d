@@ -176,7 +176,7 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
         return self.outputInterpolatedSetOfTiltSeries
 
     def get_IMOD_files(self, prevwFolder, ts_folder, TsId):
-        """Returns the path of the Tilt Serie and the angles files"""
+        """Returns the path of the Tilt Series and the angles files"""
         prevprefix = os.path.join(prevwFolder, TsId)
         prefix = os.path.join(ts_folder, TsId)
 
@@ -194,10 +194,13 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
 
         with open(sfid_path)as filex:
             nresids = len(filex.readlines())
+
         with open(resid_path, 'w') as f:
             f.write('  {} residuals\n'.format(nresids - 1))
+
             with open(sfid_path) as filex:
                 filex.readline()
+
                 for line in filex:
                     line = line.split()
                     f.write('{:10.2f}{:10.2f}{}{:8.2f}{:8.2f}\n'.format(float(line[0]), float(line[1]),

@@ -59,10 +59,10 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
                       pointerClass='SetOfLandmarkModels',
                       label='Input Fiducial Models')
         form.addParam('binning', FloatParam,
-                        default=1.0,
-                        label='Binning',
-                        help='Binning to be applied to the interpolated tilt-series. '
-                             'Must be a integer bigger than 1')
+                      default=1.0,
+                      label='Binning',
+                      help='Binning to be applied to the interpolated tilt-series. '
+                           'Must be a integer bigger than 1')
 
         form.addParallelSection(threads=4, mpi=0)
 
@@ -89,15 +89,15 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
             tiList = [ti.clone() for ti in ts]
             tiList.sort(key=lambda ti: ti.getTiltAngle())
             tiList.reverse()
-            #Creates the st and tlt files
+            # Creates the st and tlt files
             writeTiStack(tiList,
                          outputStackFn=prefix + '.st',
                          outputTltFn=prefix + '.tlt')
-            #Creates the tltxf file
+            # Creates the tltxf file
             if ts.getFirstItem().hasTransform():
                 formatTransformFile(ts, prefix + '.tltxf')
 
-            #Creates the prexg file as a identity matrix
+            # Creates the prexg file as a identity matrix
             self.write_prexg_identity(ts, prefix + '.prexg')
 
     def alignTsStep(self):
@@ -118,7 +118,7 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
         for ts in self.inputSetOfTiltSeries.get():
             tsId = ts.getTsId()
             extraPrefix = self._getExtraPath(tsId)
-            #Naming output tilt series as .mrc
+            # Naming output tilt series as .mrc
             args = '{}.st {}.mrc'.format(extraPrefix + '/' + tsId, extraPrefix + '/' + tsId)
             self.runJob('cp', args)
 
@@ -147,7 +147,6 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
     def createOutputStep(self):
         pass
 
-
     # --------------------------- INFO functions --------------------------------------------
     def _summary(self):
         summary = []
@@ -160,7 +159,7 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
         pass
 
     def _citations(self):
-        return ['Fernandez2018','Fernandez2009']
+        return ['Fernandez2018', 'Fernandez2009']
 
     # --------------------------- UTILS functions --------------------------------------------
     def getOutputInterpolatedSetOfTiltSeries(self):
@@ -176,7 +175,7 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
             self._defineSourceRelation(self.inputSetOfTiltSeries, outputInterpolatedSetOfTiltSeries)
         return self.outputInterpolatedSetOfTiltSeries
 
-    def get_IMOD_files(self,prevwFolder, ts_folder,TsId):
+    def get_IMOD_files(self, prevwFolder, ts_folder, TsId):
         '''Returns the path of the Tilt Serie and the angles files'''
         prevprefix = os.path.join(prevwFolder, TsId)
         prefix = os.path.join(ts_folder, TsId)
@@ -194,14 +193,14 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
         with open(sfid_path)as filex:
             nresids = len(filex.readlines())
         with open(resid_path, 'w') as f:
-            f.write('  {} residuals\n'.format(nresids-1))
+            f.write('  {} residuals\n'.format(nresids - 1))
             with open(sfid_path) as filex:
                 filex.readline()
                 for line in filex:
-                    line=line.split()
+                    line = line.split()
                     f.write('{:10.2f}{:10.2f}{}{:8.2f}{:8.2f}\n'.format(float(line[0]), float(line[1]),
                                                                         str(line[2]).rjust(5),
-                                                                        float(line[4]),float(line[5])))
+                                                                        float(line[4]), float(line[5])))
         return resid_path
 
     def write_prexg_identity(self, ts, prexgPath):
@@ -221,7 +220,7 @@ OutputResidualFile {}.resid\n\
 OutputTransformFile {}.tltxf\n\
 $xfproduct -StandardInput\n\
 InputFile1 {}.prexg\n\
-InputFile2 {}.tltxf'.format(*[pathi+TsId]*4))
+InputFile2 {}.tltxf'.format(*[pathi + TsId] * 4))
             return aligncomPath
 
     def make_newstcom(self, ts_folder, TsId):
@@ -242,10 +241,3 @@ BinByFactor	1\n\
 #GradientFile	{}.maggrad\n\
 $if (-e ./savework) ./savework'.format(*[pathi + TsId] * 4))
             return newstcomPath
-
-
-
-
-
-
-

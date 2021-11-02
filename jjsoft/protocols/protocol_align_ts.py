@@ -185,7 +185,8 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
 
         return aligncom, newstcom
 
-    def make_resid_file(self, prevprefix, prefix):
+    @staticmethod
+    def make_resid_file( prevprefix, prefix):
         '''Creates the resid file in the correct format from a sfid text file'''
         resid_path = prefix + '.resid'
         sfid_path = prevprefix + '_noGaps.sfid'
@@ -203,13 +204,15 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
                                                                         float(line[4]), float(line[5])))
         return resid_path
 
-    def write_prexg_identity(self, ts, prexgPath):
+    @staticmethod
+    def write_prexg_identity(ts, prexgPath):
         '''Creates the prexg file as a identity matrix'''
         with open(prexgPath, 'w') as f:
             for i in range(len(ts)):
                 f.write('1\t0\t0\t1\t0\t0\n')
 
-    def make_aligncom(self, ts_folder, TsId):
+    @staticmethod
+    def make_aligncom(ts_folder, TsId):
         '''Writes an artificial align.com file'''
         aligncomPath = ts_folder + '/align.com'
         pathi = ts_folder + '/'

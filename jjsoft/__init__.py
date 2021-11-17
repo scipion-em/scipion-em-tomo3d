@@ -64,7 +64,7 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def getTomoRecProgram(cls):
-        return join(cls.getHome(), 'tomo3d_January2015', 'bin', 'tomo3d')
+        return join(cls.getHome(), 'tomo3d')
 
     @classmethod
     def isVersionActive(cls):

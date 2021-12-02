@@ -138,7 +138,7 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
         """Denoises de tomogram using the AND method"""
         params = '-g {} -i {} -s {} -t {}'.format(self.SigmaGaussian.get(), self.nIter.get(),
                                                   self.TimeStep.get(), self.numberOfThreads)
-        out_tomo_path = self._getExtraPath(basename(inp_tomo_path.split))
+        out_tomo_path = self._getExtraPath(basename(inp_tomo_path.split()))
         args = '{} {} {}'.format(params, inp_tomo_path, out_tomo_path)
         self.runJob(Plugin.getTomoBFlowProgram(), args)
         return out_tomo_path

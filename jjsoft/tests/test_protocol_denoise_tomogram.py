@@ -56,7 +56,8 @@ class TestTomogramDenoising(BaseTest):
                                         filesPath=cls.jjsoftDataTest.getFile('tomo'),
                                         samplingRate=cls.samplingRate,
                                         acquisitionAngleMax=40.0,
-                                        acquisitionAngleMin=-40.0)
+                                        acquisitionAngleMin=-40.0,
+                                        tiltAxisAngle=90)
 
         pImpTomograms.setObjLabel('Import tomograms')
 

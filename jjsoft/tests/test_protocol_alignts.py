@@ -63,7 +63,9 @@ class TestAlignTs(BaseTest):
             amplitudeContrast=0.1,
             samplingRate=1.35,
             doseInitial=0,
-            dosePerFrame=0.3)
+            dosePerFrame=0.3,
+            tiltAxisAngle=90
+        )
         cls.launchProtocol(protImport, wait=True)
         return protImport.outputTiltSeries
 

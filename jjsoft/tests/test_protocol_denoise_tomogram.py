@@ -29,7 +29,7 @@ from os.path import exists
 
 import numpy as np
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
-from pyworkflow.utils import magentaStr
+from pyworkflow.utils import magentaStr, removeBaseExt
 from jjsoft.protocols.protocol_denoise_tomogram import ProtJjsoftProtDenoiseTomogram, DENOISE_EED, DENOISE_BF
 from tomo.protocols.protocol_import_tomograms import ProtImportTomograms
 
@@ -56,7 +56,8 @@ class TestTomogramDenoising(BaseTest):
                                         filesPath=cls.jjsoftDataTest.getFile('tomo'),
                                         samplingRate=cls.samplingRate,
                                         acquisitionAngleMax=40.0,
-                                        acquisitionAngleMin=-40.0)
+                                        acquisitionAngleMin=-40.0,
+                                        tiltAxisAngle=90)
 
         pImpTomograms.setObjLabel('Import tomograms')
 
@@ -105,8 +106,9 @@ class TestTomogramDenoising(BaseTest):
             [0.0, 1.0, 0.0, -691.2],
             [0.0, 0.0, 1.0, -345.6],
             [0.0, 0.0, 0.0, 1.0]])
+
         for tomo in outputSet:
             self.assertTrue(exists(tomo.getFileName()))
-            self.assertFalse(tomo.getTsId())  # Tomograms were imported, so they don't have tsId
+            self.assertEqual(tomo.getTsId(), removeBaseExt(tomo.getFileName()))  # Tomograms were imported, so the tsId would be the tomo basename
             self.assertEqual(tomo.getSamplingRate(), self.samplingRate)
             self.assertTrue(np.allclose(tomo.getOrigin(force=True).getMatrix(), testOrigin, rtol=1e-2))

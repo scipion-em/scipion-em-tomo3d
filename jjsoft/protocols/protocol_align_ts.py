@@ -23,6 +23,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from pyworkflow import BETA
 from pyworkflow.utils import makePath
 
 from jjsoft import Plugin
@@ -44,6 +45,7 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
     Returns the set of aligned tilt series
     """
     _label = 'motion compensated alignment'
+    _devStatus = BETA
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)

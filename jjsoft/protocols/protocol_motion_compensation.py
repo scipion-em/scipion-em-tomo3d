@@ -1,6 +1,6 @@
 # **************************************************************************
 # *
-# * Authors:     Daniel Del Hoyo Gomez (daniel.delhoyo.gomez@alumnos.upm.es)
+# * Authors:     Scipion Team
 # *
 # * Unidad de  Bioinformatica of Centro Nacional de Biotecnologia , CSIC
 # *
@@ -23,236 +23,134 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from os.path import join, exists
+
+import mrcfile
+import numpy as np
+
 from jjsoft import Plugin
-from tomo.protocols import ProtTomoBase
-
-from pwem.protocols import EMProtocol
-from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatParam, LEVEL_ADVANCED
-
+from jjsoft.protocols.protocol_base_reconstruct import ProtBaseReconstruct
+from pyworkflow import BETA
+from pyworkflow.utils import makePath
+from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatParam, LEVEL_ADVANCED, BooleanParam
 from tomo.objects import Tomogram
-import os
-import pyworkflow as pw
-from tomo.convert import writeTiStack
 from imod.utils import formatTransformFile
 
+# Motion modelling labels
+POLYNOMIAL = 0
+SPLINES = 1
 
-class ProtJjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
+# Sample thickness labels
+THIN = 0
+THICK = 1
+
+# Weighting methods labels
+# ['None', 'WBP-Ramp', 'WBP-Hamming', 'SIRT']
+W_NONE = 0
+W_RAMP = 1
+W_HAMMING = 2
+W_SIRT = 3
+
+
+class ProtJjsoftAlignReconstructTomogram(ProtBaseReconstruct):
     """ Reconstruct tomograms by aligning the tilt series using the fiducial positions with tomoalign
     and then reconstructs the tomogram with tomorec.
     Software from : https://sites.google.com/site/3demimageprocessing/
     Returns the set of tomograms
     """
     _label = 'motion compensated reconstruction'
-
-    def __init__(self, **args):
-        EMProtocol.__init__(self, **args)
+    _devStatus = BETA
 
     # --------------------------- DEFINE param functions --------------------------------------------
     def _defineParams(self, form):
         # First we customize the inputParticles param to fit our needs in this protocol
-        form.addSection(label='Input')
-        form.addParam('inputSetOfTiltSeries', PointerParam, important=True,
-                      pointerClass='SetOfTiltSeries',
-                      label='Input Tilt Series Non Interpolated')
+        self._defineInputParams(form)
         form.addParam('inputSetOfLandmarkModels', PointerParam, important=True,
                       pointerClass='SetOfLandmarkModels',
                       label='Input Fiducial Models')
 
         form.addSection(label='Alignment')
-        form.addParam('useBinning', EnumParam,
-                      choices=['Yes', 'No'],
-                      default=0,
-                      label='Use binning',
-                      display=EnumParam.DISPLAY_HLIST,
-                      help='Use of binning factor to be applied internally to the input fiducial file')
         form.addParam('binningFactor', FloatParam,
-                       default=1.0, condition = 'useBinning==0',
-                       label='Binning factor',
-                       help='Binning to be applied to the interpolated tilt-series. '
-                            'Must be a integer bigger than 1')
+                      default=1.0,
+                      label='Binning factor',
+                      help='Binning to be applied to the interpolated tilt-series.')
         form.addParam('motionModeling', EnumParam,
-                      choices=['Polynomial', 'Interpolation'],
-                      default=0,
+                      choices=['Polynomial', 'Splines'],
+                      default=POLYNOMIAL,
                       label='Motion modeling',
                       display=EnumParam.DISPLAY_HLIST,
-                      help='Modeling of motion by polynomials or by interpolation')
+                      help='Motion modelling by polynomials or by interpolating splines.')
         form.addParam('sampleThickness', EnumParam,
                       choices=['Thin', 'Thick'],
-                      default=0,
+                      default=THIN,
                       label='Sample Thickness',
                       display=EnumParam.DISPLAY_HLIST,
-                      help='The Z direction will only be taken into account in thick samples')
+                      help='Thick samples require more complex calculations than thinner.'
+                           'Using polynomial motion:\n'
+                           '\tthin:  second order bivariate  polynomials\n'
+                           '\tthick: second order trivariate polynomials.\n'
+                           'Using interpolating splines:\n'
+                           '\tthin:  bivariate interpolating splines.\n'
+                           '\tthick: trivariate interpolating splines.')
+        form.addParam('imodXF', BooleanParam,
+                      default=True,
+                      label='IMOD Transform file (.xf)',
+                      display=EnumParam.DISPLAY_HLIST,
+                      expertLevel=LEVEL_ADVANCED,
+                      help='Input IMOD Transform file (.xf) to set the initial alignment parameters (rotation, '
+                           'magnification).')
 
         form.addSection(label='Reconstruction')
-        form.addParam('weighting', EnumParam,
-                      choices=['None', 'WBP-Ramp','WBP-Hamming','SIRT'],
-                      default=2,
-                      label='Weighting Methods',
-                      display=EnumParam.DISPLAY_HLIST,
+        form.addParam('weighting', BooleanParam,
+                      default=True,
+                      label='Apply weighting?',
                       help='Methods available for weighting')
         form.addParam('sirtIter', IntParam,
                       default=30, condition='weighting==3',
                       label='SIRT iterations',
                       help='Number of iterations of the SIRT weighting method to be applied')
-        form.addParam('imodXF', EnumParam,
-                      choices=['Yes', 'No'],
-                      default=1,
-                      label='Use IMOD xf',
-                      display=EnumParam.DISPLAY_HLIST,
-                      help='Use transformation file xf from IMOD to apply in the original stack',
-                      expertLevel=LEVEL_ADVANCED)
-        form.addParam('setShape', EnumParam,
-                      choices=['Yes', 'No'],
-                      default=1,
-                      label='Set manual tomogram shape',
-                      display=EnumParam.DISPLAY_HLIST,
-                      help='By deafault the shape of the tomogram is defined by the tilt series shape')
 
-        group = form.addGroup('Tomogram shape', condition='setShape==0')
-        group.addParam('width', IntParam,
-                       default=0,
-                       label='Width',
-                       help='Focus the tomogram in a region of the tilt series')
-        group.addParam('height', IntParam,
-                       default=0,
-                       label='Thickness',
-                       help='Height of the reconstructed tomogram (Default: width of the tomogram)')
-        group.addParam('iniSlice', IntParam,
-                       default=0,
-                       label='Initial slice',
-                       help='Initial slice (of range) to include')
-        group.addParam('finSlice', IntParam,
-                       default=0,
-                       label='Final slice',
-                       help='Final slice (of range) to include (Maximum must be the size of tilt series)')
-
-
+        self._defineReconstructParams(form)
         form.addParallelSection(threads=4, mpi=0)
 
     # --------------------------- INSERT steps functions --------------------------------------------
     def _insertAllSteps(self):
-        """ Insert every step of the protocol"""
-        pre1 = []
-        stepId = self._insertFunctionStep('convertInputStep')
-        pre1.append(stepId)
-
-        pre2,pre3,pre4 = [], [], []
-        self.outputFiles = []
-
-        stepId = self._insertFunctionStep('convertFiducialTextStep', prerequisites=pre1)
-        pre2.append(stepId)
-        stepId = self._insertFunctionStep('alignTsStep', prerequisites=pre2)
-        pre3.append(stepId)
-        stepId = self._insertFunctionStep('reconstructTomogramStep', prerequisites=pre3)
-        pre4.append(stepId)
-
-        self._insertFunctionStep('createOutputStep', prerequisites=pre4)
+        for ts, fm in zip(self.inputSetOfTiltSeries.get(), self.inputSetOfLandmarkModels.get()):
+            tsId = ts.getTsId()
+            self.workingFolder = self._getExtraPath(tsId, fm.getFileName())
+            makePath(self.workingFolder)
+            self._insertFunctionStep(self.convertInputStep, tsId)
+            self._insertFunctionStep(self.alignTsStep, tsId)
+            self._insertFunctionStep(self.reconstructTomogramStep, tsId)
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions --------------------------------------------
-    def convertInputStep(self):
-        for ts in self.inputSetOfTiltSeries.get():
-            tsId = ts.getTsId()
-            workingFolder = self._getExtraPath(tsId)
-            prefix = os.path.join(workingFolder, tsId)
-            pw.utils.makePath(workingFolder)
-            tiList = [ti.clone() for ti in ts]
-            tiList.sort(key=lambda ti: ti.getTiltAngle())
-            tiList.reverse()
-            writeTiStack(tiList,
-                         outputStackFn=prefix + '.st',
-                         outputTltFn=prefix + '.tlt')
-            if ts.getFirstItem().hasTransform():
-                formatTransformFile(ts, prefix + '.xf')
+    def convertInputStep(self, tsId, scipionFiducial):
+        # Tilt series convert
+        prefix = join(self.workingFolder, tsId)
+        if self.ts.getFirstItem().hasTransform():
+            formatTransformFile(self.ts, prefix + '.xf')
 
-    def convertFiducialTextStep(self):
-        for fidu in self.inputSetOfLandmarkModels.get():
-            tsId = fidu.getTsId()
-            workingFolder = self._getExtraPath(tsId)
+        # Fiducial model convert
+        imodFiducial = join(self.workingFolder, 'imod_%s.fid.txt' % tsId)
+        self.parse_fid(scipionFiducial, imodFiducial)
 
-            scip_fiducial = fidu.getFileName()
-            imod_fiducial = workingFolder + '/imod_{}.fid.txt'.format(tsId)
+    def alignTsStep(self, tsId):
+        TsPath, AnglesPath, transformPath = self.getTsFiles(self.workingFolder, tsId)
+        fiducial_text = join(self.workingFolder, 'imod_%s.fid.txt' % tsId)
+        out_bin = join(self.workingFolder, 'alignment_%s.bin' % tsId)
+        binningFactor = self.binningFactor.get()
 
-            self.parse_fid(scip_fiducial, imod_fiducial)
+        params = '-i %s -a %s -o %s' % (fiducial_text, AnglesPath, out_bin)
+        if binningFactor > 1:
+            params += '-b %.1f ' % binningFactor
+        if self.motionModeling.get() == SPLINES:
+            params += '-s '
+        params += '-t %s ' % ('thin' if self.sampleThickness.get() == THIN else 'thick')
+        if self.imodXF.get() and exists(transformPath):
+            params += ' -I %s ' % transformPath
 
-    def alignTsStep(self):
-        for fidu in self.inputSetOfLandmarkModels.get():
-            tsId = fidu.getTsId()
-            workingFolder = self._getExtraPath(tsId)
-            TsPath, AnglesPath, transformPath = self.get_Ts_files(workingFolder, tsId)
-            fiducial_text = workingFolder + '/imod_{}.fid.txt'.format(tsId)
-            out_bin = workingFolder + '/alignment_{}.bin'.format(tsId)
-
-            params = ''
-            if self.useBinning.get() == 0:
-                params += ' -b {}'.format(self.binningFactor.get())
-            if self.motionModeling.get() == 1:
-                params += ' -s'
-            if self.sampleThickness.get() == 0:
-                params += ' -t thin'
-            else:
-                params += ' -t thick'
-
-            if self.imodXF.get() == 0 and os.path.exists(transformPath):
-                params += ' -I ' + transformPath
-
-            args = '-i {} -a {} -o {}'.format(fiducial_text, AnglesPath, out_bin)
-            args += params
-            self.runJob(Plugin.getTomoAlignProgram(), args)
-
-    def reconstructTomogramStep(self):
-        for fidu in self.inputSetOfLandmarkModels.get():
-            tsId = fidu.getTsId()
-            workingFolder = self._getExtraPath(tsId)
-            TsPath, AnglesPath, transformPath = self.get_Ts_files(workingFolder, tsId)
-            out_tomo_path = workingFolder + '/tomo_{}.mrc'.format(tsId)
-            align_bin = workingFolder + '/alignment_{}.bin'.format(tsId)
-
-            params = ''
-            if self.weighting.get() == 1:
-                params += ' -w on ramp'
-            elif self.weighting.get() == 2:
-                params += ' -w on hamming'
-            elif self.weighting.get() == 3:
-                params += ' -w on sirt -l {}'.format(self.sirtIter.get())
-            else:
-                params += ' -w off'
-
-            if self.setShape.get() == 0:
-                if self.width.get() != 0:
-                    params += ' -x {}'.format(self.width.get())
-                if self.finSlice.get() != 0:
-                    params += ' -Y {},{}'.format(self.iniSlice.get(),self.finSlice.get())
-                if self.height.get() != 0:
-                    params += ' -z {}'.format(self.height.get())
-
-            if self.imodXF.get() == 0 and os.path.exists(transformPath):
-                params += ' -S ' + transformPath
-
-            params += ' -t {}'.format(self.numberOfThreads)
-
-            args = '-a {} -i {} -o {}'.format(align_bin, TsPath, out_tomo_path)
-            args += params
-            self.runJob(Plugin.getTomoRecProgram(), args)
-            self.outputFiles.append(out_tomo_path)
-
-    def createOutputStep(self):
-        outputTomos = self._createSetOfTomograms()
-        outputTomos.copyInfo(self.inputSetOfTiltSeries.get())
-        #outputTomos.setSamplingRate(self.inputSetOfTiltSeries.getSamplingRate())
-
-        for i, inp_ts in enumerate(self.inputSetOfTiltSeries.get()):
-            tomo_path = self.outputFiles[i]
-            tomo = Tomogram()
-            tomo.setLocation(tomo_path)
-            tomo.setSamplingRate(inp_ts.getSamplingRate())
-            # tomo.setAcquisition(inp_ts.getAcquisition())
-            outputTomos.append(tomo)
-
-
-        self._defineOutputs(outputTomograms=outputTomos)
-        self.outputTomograms=outputTomos
-        self._defineSourceRelation(self.inputSetOfTiltSeries, outputTomos)
-
+        self.runJob(Plugin.getTomoAlignProgram(), params)
 
     # --------------------------- INFO functions --------------------------------------------
     def _summary(self):
@@ -266,26 +164,29 @@ class ProtJjsoftAlignReconstructTomogram(EMProtocol, ProtTomoBase):
         pass
 
     def _citations(self):
-        return ['Fernandez2018','Fernandez2009']
+        return ['Fernandez2018', 'Fernandez2009']
 
     # --------------------------- UTILS functions --------------------------------------------
-    def get_Ts_files(self,ts_folder,TsId):
-        '''Returns the path of the Tilt Serie and the angles files'''
-        prefix = os.path.join(ts_folder, TsId)
+    @staticmethod
+    def getTsFiles(tsFolder, tSId):
+        """Returns the path of the Tilt Serie and the angles files"""
+        prefix = join(tsFolder, tSId)
         TsPath = prefix + '.st'
         AnglesPath = prefix + '.tlt'
         transformPath = prefix + '.xf'
 
         return TsPath, AnglesPath, transformPath
 
-    def parse_fid(self,scip_fid,out_fid):
-        '''Converts the scipion fid format to JJ format needed'''
+    @staticmethod
+    def parse_fid(scip_fid,out_fid):
+        """Converts the scipion fid format to JJ format needed"""
         with open(out_fid, 'w') as f:
             with open(scip_fid) as filex:
                 filex.readline()
                 for line in filex:
                     p = line.split('\t')
-                    f.write('1\t{}\t{}\t{}\t{}\n'.format(p[3],float(p[0]),float(p[1]),float(p[2])))
+                    f.write('1\t{}\t{}\t{}\t{}\n'.format(p[3], float(p[0]), float(p[1]), float(p[2])))
+
 
 
 

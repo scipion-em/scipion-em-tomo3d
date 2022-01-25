@@ -25,6 +25,7 @@
 # **************************************************************************
 from os.path import basename
 
+from pyworkflow import BETA
 from tomo.protocols import ProtTomoBase
 from jjsoft import Plugin
 
@@ -42,6 +43,7 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
     Returns the set of denoised tomograms
     """
     _label = 'denoise tomogram'
+    _devStatus = BETA
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)

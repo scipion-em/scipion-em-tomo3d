@@ -25,6 +25,8 @@
 # *
 # **************************************************************************
 
-
+JJSOFT = 'jjsoft'
 JJSOFT_HOME = "JJSOFT_HOME"
-V0_1 = '0.1'
+JJSOFT_URL = 'https://github.com/scipion-em/scipion-em-jjsoft/blob/devel/'
+JJSOFT_README = JJSOFT_URL + 'README.rst'
+

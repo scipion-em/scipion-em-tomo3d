@@ -55,17 +55,29 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
     # --------------------------- DEFINE param functions --------------------------------------------
     def _defineParams(self, form):
         self._defineInputParams(form)
-        self._defineReconstructParams(form)
+        form.addParam('method', EnumParam,
+                      choices=['WBP (Fast)', 'SIRT (Slow)'], default=0,
+                      label='Reconstruction method',
+                      help='Reconstrution method to use')
+        form.addParam('nIterations', IntParam, default=30,
+                      condition='method==1',
+                      label='Number of Iterations (SIRT)',
+                      help='Number of Iterations used in the SIRT method')
+        form.addParam('Hamming', FloatParam, default=0.0,
+                      label='Hamming filter frequency',
+                      help='Frequency for the Hamming atenuation filter [0,0.5]. \n0 always uses the filter, '
+                           '0.5 turns it off')
+        self._defineSetShapeParams(form)
         form.addParallelSection(threads=4, mpi=0)
 
     # --------------------------- INSERT steps functions --------------------------------------------
     def _insertAllSteps(self):
         """ Insert every step of the protocol"""
         self._insertFunctionStep(self.convertInputStep)
-        self.outputFiles = []
+        # self.outputFiles = []
         for ts in self.inputSetOfTiltSeries.get():
             tsId = ts.getTsId()
-            workingFolder = self._getTmpPath(tsId)
+            workingFolder = self.getWorkingDirName(tsId)
             self._insertFunctionStep(self.reconstructTomogramStep, tsId, workingFolder)
         self._insertFunctionStep(self.createOutputStep)
 
@@ -73,7 +85,7 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
     def convertInputStep(self):
         for ts in self.inputSetOfTiltSeries.get():
             tsId = ts.getTsId()
-            workingFolder = self._getTmpPath(tsId)
+            workingFolder = self.getWorkingDirName(tsId)
             prefix = os.path.join(workingFolder, tsId)
             makePath(workingFolder)
 
@@ -82,6 +94,27 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
 
             ts.applyTransform(outputStackFn)
             ts.generateTltFile(outputTltFn)
+
+    def reconstructTomogramStep(self, tsId, workingFolder):
+        # We start preparing writing those elements we're using as input to keep them untouched
+        TsPath, AnglesPath = self.getTsFiles(workingFolder, tsId)
+        outTomoPath = workingFolder + '/tomo_{}.mrc'.format(tsId)
+        params = ''
+        if self.method.get() == 1:
+            params += ' -S -l %i ' % self.nIterations.get()
+        if self.setShape.get():
+            if self.width.get() != 0:
+                params += ' -x {}'.format(self.width.get())
+            if self.finSlice.get() != 0:
+                params += ' -y {},{}'.format(self.iniSlice.get(), self.finSlice.get())
+            if self.height.get() != 0:
+                params += ' -z {}'.format(self.height.get())
+
+        args = '-i {} -a {} -o {} -t {}'.format(TsPath, AnglesPath, outTomoPath, self.numberOfThreads)
+        args += params
+        self.runJob(Plugin.getTomo3dProgram(), args)
+        out_tomo_rx_path = self.rotXTomo(tsId)
+        self.outputFiles.append(out_tomo_rx_path)
 
     # --------------------------- INFO functions --------------------------------------------
     def _summary(self):

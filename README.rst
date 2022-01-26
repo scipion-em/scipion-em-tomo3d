@@ -43,11 +43,11 @@ directory are tomo3d, tomowarpalign, tomobflow and tomoeed, respectively. Thus, 
 Scipion should look like this:
 
 scipionDirectory/software/em/jjsoft-VersionNumber
-|__tomo3d
-|__tomowarpalign
-|__tomobflow
-|__tomoeed
-|__jjsoft_installed (plugin installation file, generated automatically during the plugin installation)
+-tomo3d
+-tomowarpalign
+-tomobflow
+-tomoeed
+-jjsoft_installed (plugin installation file, generated automatically during the plugin installation)
 
 
 

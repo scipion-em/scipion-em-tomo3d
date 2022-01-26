@@ -60,8 +60,12 @@ class Plugin(pwem.Plugin):
         return join(cls.getHome(), 'tomoalign')
 
     @classmethod
-    def getTomoRecProgram(cls):
+    def getTomo3dProgram(cls):
         return join(cls.getHome(), 'tomo3d')
+
+    @classmethod
+    def getTomoRecProgram(cls):
+        return join(cls.getHome(), 'tomorec')
 
     @classmethod
     def defineBinaries(cls, env):

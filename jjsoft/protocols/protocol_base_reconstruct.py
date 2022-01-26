@@ -36,7 +36,7 @@ from jjsoft import Plugin
 from tomo.protocols import ProtTomoBase
 
 from pwem.protocols import EMProtocol
-from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatParam
+from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatParam, BooleanParam
 
 from tomo.objects import Tomogram
 import os
@@ -49,9 +49,9 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
     """
 
     # --------------------------- DEFINE param functions --------------------------------------------
-    # def __init__(self, **kwargs):
-    #     super().__init__(**kwargs)
-        # workingFolder = None
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.outputFiles = []
 
     def _defineParams(self, form):
         pass
@@ -65,30 +65,14 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
                       label='Non Interpolated Tilt Series')
 
     @staticmethod
-    def _defineReconstructParams(form):
-        form.addParam('inputSetOfTiltSeries', PointerParam, important=True,
-                      pointerClass='SetOfTiltSeries',
-                      label='Input Tilt Series')
-        form.addParam('method', EnumParam,
-                      choices=['WBP (Fast)', 'SIRT (Slow)'], default=0,
-                      label='Reconstruction method',
-                      help='Reconstrution method to use')
-        form.addParam('nIterations', IntParam, default=30,
-                      condition='method==1',
-                      label='Number of Iterations (SIRT)',
-                      help='Number of Iterations used in the SIRT method')
-        form.addParam('Hamming', FloatParam, default=0.0,
-                      label='Hamming filter frequency',
-                      help='Frequency for the Hamming atenuation filter [0,0.5]. \n0 always uses the filter, '
-                           '0.5 turns it off')
-        form.addParam('setShape', EnumParam,
-                      choices=['Yes', 'No'],
-                      default=1,
+    def _defineSetShapeParams(form):
+        form.addParam('setShape', BooleanParam,
+                      default=True,
                       label='Set manual tomogram shape',
                       display=EnumParam.DISPLAY_HLIST,
                       help='By deafault the shape of the tomogram is defined by the tilt series shape')
 
-        group = form.addGroup('Tomogram shape', condition='setShape==0')
+        group = form.addGroup('Tomogram shape', condition='setShape')
         group.addParam('width', IntParam,
                        default=0,
                        label='Width',
@@ -111,28 +95,6 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
     # --------------------------- INSERT steps functions --------------------------------------------
     def _insertAllSteps(self):
         pass
-
-    # --------------------------- STEPS functions --------------------------------------------
-    def reconstructTomogramStep(self, tsId, workingFolder):
-        # We start preparing writing those elements we're using as input to keep them untouched
-        TsPath, AnglesPath = self.getTsFiles(workingFolder, tsId)
-        out_tomo_path = workingFolder + '/tomo_{}.mrc'.format(tsId)
-        params = ''
-        if self.method == 1:
-            params += ' -S -l '+str(self.nIterations)
-        if self.setShape.get() == 0:
-            if self.width.get() != 0:
-                params += ' -x {}'.format(self.width.get())
-            if self.finSlice.get() != 0:
-                params += ' -y {},{}'.format(self.iniSlice.get(), self.finSlice.get())
-            if self.height.get() != 0:
-                params += ' -z {}'.format(self.height.get())
-
-        args = '-i {} -a {} -o {} -t {}'.format(TsPath, AnglesPath, out_tomo_path, self.numberOfThreads)
-        args += params
-        self.runJob(Plugin.getTomoRecProgram(), args)
-        out_tomo_rx_path = self.rotXTomo(tsId)
-        self.outputFiles.append(out_tomo_rx_path)
 
     def rotXTomo(self, tsId):
         """Result of the reconstruction must be rotated 90 degrees around the X
@@ -188,5 +150,7 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
         AnglesPath = prefix + '.rawtlt'
         return TsPath, AnglesPath
 
+    def getWorkingDirName(self, tsId):
+        return self._getTmpPath(tsId)
 
 

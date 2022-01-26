@@ -128,21 +128,21 @@ class ProtJjsoftAlignReconstructTomogram(ProtBaseReconstruct):
             workingFolder = self.getWorkingDirName(tsId)
             makePath(workingFolder)
             # Tilt series convert
-            prefix = join(workingFolder, tsId)
             if ts.getFirstItem().hasTransform():
-                formatTransformFile(ts, prefix + '.xf')
-            ts.generateTltFile(prefix + '.rawtlt')
+                formatTransformFile(ts, self.getImodXfFile(workingFolder, tsId))
+            ts.generateTltFile(self.getAnglesFile(workingFolder, tsId))
             # Fiducials convert
-            imodFiducial = join(workingFolder, 'imod_%s.fid.txt' % tsId)
-            self.parse_fid(fm.getFileName(), imodFiducial)
+            imodFiducial = self.getImodTxtFiducialsFile(workingFolder, tsId)
+            self.parseFiducialFile(fm.getFileName(), imodFiducial)
 
     def alignTsStep(self, tsId, workingFolder):
-        TsPath, AnglesPath, transformPath = self.getTsFilesMotComp(workingFolder, tsId)
-        fiducial_text = join(workingFolder, 'imod_%s.fid.txt' % tsId)
-        out_bin = join(workingFolder, 'alignment_%s.par' % tsId)
         binningFactor = self.binningFactor.get()
+        outFile = self.getTomoAlignOutputFile(workingFolder, tsId)
+        fiducialTxt = self.getImodTxtFiducialsFile(workingFolder, tsId)
+        anglesPath = self.getAnglesFile(workingFolder, tsId)
+        transformPath = self.getImodXfFile(workingFolder, tsId)
 
-        params = '-i %s -a %s -o %s ' % (fiducial_text, AnglesPath, out_bin)
+        params = '-i %s -a %s -o %s ' % (fiducialTxt, anglesPath, outFile)
         if binningFactor > 1:
             params += '-b %.1f ' % binningFactor
         if self.motionModeling.get() == SPLINES:
@@ -210,15 +210,31 @@ class ProtJjsoftAlignReconstructTomogram(ProtBaseReconstruct):
         return TsPath, AnglesPath, transformPath
 
     @staticmethod
-    def parse_fid(scip_fid, out_fid):
-        """Converts the scipion fid format to JJ format needed"""
-        with open(out_fid, 'w') as f:
-            with open(scip_fid) as filex:
+    def parseFiducialFile(scipionFid, outFid):
+        """Converts the Scipion fid format to JJ format needed"""
+        with open(outFid, 'w') as f:
+            with open(scipionFid) as filex:
                 filex.readline()
                 for line in filex:
                     p = line.split('\t')
                     f.write('1\t{}\t{}\t{}\t{}\n'.format(p[3], float(p[0]), float(p[1]), float(p[2])))
 
+    @staticmethod
+    def getPathAndBaseName(workingFolder, tsId):
+        return join(workingFolder, tsId)
 
+    @staticmethod
+    def getAnglesFile(workingFolder, tsId):
+        return ProtJjsoftAlignReconstructTomogram.getPathAndBaseName(workingFolder, tsId) + '.tlt'
 
+    @staticmethod
+    def getImodXfFile(workingFolder, tsId):
+        return ProtJjsoftAlignReconstructTomogram.getPathAndBaseName(workingFolder, tsId) + '.xf'
 
+    @staticmethod
+    def getImodTxtFiducialsFile(workingFolder, tsId):
+        return join(workingFolder, 'imod_%s.fid.txt' % tsId)
+
+    @staticmethod
+    def getTomoAlignOutputFile(workingFolder, tsId):
+        return join(workingFolder, 'alignment_%s.par' % tsId)

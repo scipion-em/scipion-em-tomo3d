@@ -29,9 +29,10 @@ This package contains the protocols and data for jjsoft
 """
 from os.path import join
 import pwem
-from .constants import JJSOFT_HOME
+from pyworkflow.utils import yellowStr
+from .constants import JJSOFT_HOME, JJSOFT, JJSOFT_README, JJSOFT_BIN_VERSION, TOMO3D
 
-__version__ = '3.0.2'
+__version__ = '3.0.3'
 
 
 class Plugin(pwem.Plugin):
@@ -40,33 +41,50 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def _defineVariables(cls):
-        cls._defineEmVar(JJSOFT_HOME, "jjsoft")
+        cls._defineEmVar(JJSOFT_HOME, JJSOFT + '-%s' % JJSOFT_BIN_VERSION)
 
     @classmethod
     def getTomoBFlowProgram(cls):
-        return join(cls.getHome(), 'tomobflow', 'bin', 'tomobflow')
+        return join(cls.getHome(), 'tomobflow')
 
     @classmethod
     def getTomoEEDProgram(cls):
-        return join(cls.getHome(), 'tomoeed', 'bin', 'tomoeed')
-
-    @classmethod
-    def getAlignProgramsPath(cls):
-        return join(cls.getHome(), 'tomoalign_Jan2019_linux', 'bin')
+        return join(cls.getHome(), 'tomoeed')
 
     @classmethod
     def getTomowarpalignProgram(cls):
-        return join(cls.getAlignProgramsPath(), 'tomowarpalign')
+        return join(cls.getHome(), 'tomowarpalign')
 
     @classmethod
     def getTomoAlignProgram(cls):
-        return join(cls.getAlignProgramsPath(), 'tomoalign')
+        return join(cls.getHome(), 'tomoalign')
+
+    @classmethod
+    def getTomo3dProgram(cls):
+        return join(cls.getHome(), TOMO3D)
 
     @classmethod
     def getTomoRecProgram(cls):
-        return join(cls.getHome(), 'tomo3d')
+        return join(cls.getHome(), 'tomorec')
 
     @classmethod
-    def isVersionActive(cls):
-        return cls.getActiveVersion().startswith("")
+    def defineBinaries(cls, env):
+        # At this point of the installation execution cls.getHome() is None, so the em path should be provided
+        # Only the directory will be generated, because the binaries must be downloaded manually from José
+        # Jesús website, filling a form
+        JJSOFT_INSTALLED = 'readme.txt'
+        msg = 'Binaries must be installed manually. Please follow the instructions described here: ' + JJSOFT_README
+        # installationCmd = 'touch %s &&' % JJSOFT_INSTALLED  # Flag installation finished
+        installationCmd = 'echo %s && ' % yellowStr(msg.upper())
+        installationCmd += 'echo "%s" >> %s' % (msg, JJSOFT_INSTALLED)
+
+        env.addPackage(JJSOFT,
+                       version=JJSOFT_BIN_VERSION,
+                       tar='void.tgz',
+                       commands=[(installationCmd, JJSOFT_INSTALLED)],
+                       neededProgs=["wget", "tar"],
+                       default=True)
+
+#TODO validateInstallation
+
 

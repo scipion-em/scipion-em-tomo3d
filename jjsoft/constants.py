@@ -29,4 +29,6 @@ JJSOFT = 'jjsoft'
 JJSOFT_HOME = "JJSOFT_HOME"
 JJSOFT_URL = 'https://github.com/scipion-em/scipion-em-jjsoft/blob/devel/'
 JJSOFT_README = JJSOFT_URL + 'README.rst'
+JJSOFT_BIN_VERSION = '22.01.27'
+TOMO3D = 'tomo3d'
 

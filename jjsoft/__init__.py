@@ -30,7 +30,7 @@ This package contains the protocols and data for jjsoft
 from os.path import join
 import pwem
 from pyworkflow.utils import yellowStr
-from .constants import JJSOFT_HOME, JJSOFT, JJSOFT_README
+from .constants import JJSOFT_HOME, JJSOFT, JJSOFT_README, JJSOFT_BIN_VERSION, TOMO3D
 
 __version__ = '3.0.3'
 
@@ -41,7 +41,7 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def _defineVariables(cls):
-        cls._defineEmVar(JJSOFT_HOME, JJSOFT)
+        cls._defineEmVar(JJSOFT_HOME, JJSOFT + '-%s' % JJSOFT_BIN_VERSION)
 
     @classmethod
     def getTomoBFlowProgram(cls):
@@ -61,7 +61,7 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def getTomo3dProgram(cls):
-        return join(cls.getHome(), 'tomo3d')
+        return join(cls.getHome(), TOMO3D)
 
     @classmethod
     def getTomoRecProgram(cls):
@@ -69,26 +69,22 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def defineBinaries(cls, env):
-        JJSOFT_INSTALLED = '%s_installed' % JJSOFT
         # At this point of the installation execution cls.getHome() is None, so the em path should be provided
-        pluginHome = join(pwem.Config.EM_ROOT, cls.getPluginDir())
         # Only the directory will be generated, because the binaries must be downloaded manually from José
         # Jesús website, filling a form
-        installationCmd = 'cd %s && ' % pluginHome
-        installationCmd += 'touch %s &&' % JJSOFT_INSTALLED  # Flag installation finished
-        installationCmd += 'echo "%s"' % (yellowStr('Binaries must be installed manually. Please follow the '
-                                                    'instructions described here: '.upper() + JJSOFT_README))
+        JJSOFT_INSTALLED = 'readme.txt'
+        msg = 'Binaries must be installed manually. Please follow the instructions described here: ' + JJSOFT_README
+        # installationCmd = 'touch %s &&' % JJSOFT_INSTALLED  # Flag installation finished
+        installationCmd = 'echo %s && ' % yellowStr(msg.upper())
+        installationCmd += 'echo "%s" >> %s' % (msg, JJSOFT_INSTALLED)
+
         env.addPackage(JJSOFT,
-                       version=__version__,
+                       version=JJSOFT_BIN_VERSION,
                        tar='void.tgz',
                        commands=[(installationCmd, JJSOFT_INSTALLED)],
                        neededProgs=["wget", "tar"],
                        default=True)
 
-        # print(yellowStr('Binaries must be installed manually'))
-
-    @staticmethod
-    def getPluginDir():
-        return JJSOFT + '-' + __version__
+#TODO validateInstallation
 
 

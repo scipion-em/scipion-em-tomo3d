@@ -40,7 +40,6 @@ THIN = 0
 THICK = 1
 
 # Weighting methods labels
-# ['None', 'WBP-Ramp', 'WBP-Hamming', 'SIRT']
 W_NONE = 0
 W_RAMP = 1
 W_HAMMING = 2
@@ -182,7 +181,8 @@ class ProtJjsoftAlignReconstructTomogram(ProtBaseReconstruct):
         params += ' -t %i ' % self.numberOfThreads.get()
 
         self.runJob(Plugin.getTomoRecProgram(), params)
-        self.outputFiles.append(out_tomo_path)
+        out_tomo_rx_path = self.rotXTomo(tsId)
+        self.outputFiles.append(out_tomo_rx_path)
 
     # --------------------------- INFO functions --------------------------------------------
     def _summary(self):
@@ -212,6 +212,7 @@ class ProtJjsoftAlignReconstructTomogram(ProtBaseReconstruct):
     @staticmethod
     def parseFiducialFile(scipionFid, outFid):
         """Converts the Scipion fid format to JJ format needed"""
+        #TODO: parse with csvreader and substract 1 to Z column
         with open(outFid, 'w') as f:
             with open(scipionFid) as filex:
                 filex.readline()

@@ -26,7 +26,7 @@
 from pyworkflow import BETA
 from pyworkflow.utils import makePath
 
-from jjsoft import Plugin
+from tomo3d import Plugin
 from tomo.protocols import ProtTomoBase
 
 from pwem.protocols import EMProtocol

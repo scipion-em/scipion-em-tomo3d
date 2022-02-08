@@ -28,13 +28,13 @@ from os.path import join
 import mrcfile
 import numpy as np
 
-from jjsoft.protocols.protocol_base_reconstruct import ProtBaseReconstruct
+from tomo3d.protocols.protocol_base_reconstruct import ProtBaseReconstruct
 from pwem.emlib.image import ImageHandler
 from pwem.objects import Transform
 from pyworkflow import BETA
 from pyworkflow.utils import makePath
 
-from jjsoft import Plugin
+from tomo3d import Plugin
 from tomo.protocols import ProtTomoBase
 
 from pwem.protocols import EMProtocol

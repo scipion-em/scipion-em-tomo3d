@@ -27,19 +27,14 @@ from os.path import join
 
 import mrcfile
 import numpy as np
-from pwem.emlib.image import ImageHandler
-from pwem.objects import Transform
-from pyworkflow import BETA
 from pyworkflow.utils import makePath
 
-from jjsoft import Plugin
 from tomo.protocols import ProtTomoBase
 
 from pwem.protocols import EMProtocol
-from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatParam, BooleanParam
+from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, BooleanParam
 
 from tomo.objects import Tomogram
-import os
 
 
 class ProtBaseReconstruct(EMProtocol, ProtTomoBase):

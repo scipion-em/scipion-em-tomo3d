@@ -24,8 +24,8 @@
 # *
 # **************************************************************************
 from os.path import join, exists
-from jjsoft import Plugin
-from jjsoft.protocols.protocol_base_reconstruct import ProtBaseReconstruct
+from tomo3d import Plugin
+from tomo3d.protocols.protocol_base_reconstruct import ProtBaseReconstruct
 from pyworkflow import BETA
 from pyworkflow.utils import makePath
 from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatParam, LEVEL_ADVANCED, BooleanParam

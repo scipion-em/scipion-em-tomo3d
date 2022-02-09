@@ -29,7 +29,7 @@ import numpy as np
 from os.path import exists
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
-from jjsoft.protocols.protocol_reconstruct_tomogram import ProtJjsoftReconstructTomogram
+from tomo3d.protocols.protocol_reconstruct_tomogram import ProtJjsoftReconstructTomogram
 from tomo.protocols.protocol_ts_import import ProtImportTs
 
 

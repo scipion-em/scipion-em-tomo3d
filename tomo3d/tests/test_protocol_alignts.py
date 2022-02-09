@@ -30,8 +30,8 @@ from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import greenStr
 from imod.protocols import ProtImodXcorrPrealignment, ProtImodFiducialAlignment
 
-from jjsoft.protocols.protocol_align_ts import ProtJjsoftAlignTs
-from jjsoft.protocols.protocol_motion_compensation import ProtJjsoftAlignReconstructTomogram
+from tomo3d.protocols.protocol_align_ts import ProtJjsoftAlignTs
+from tomo3d.protocols.protocol_motion_compensation import ProtJjsoftAlignReconstructTomogram
 
 from tomo.protocols.protocol_ts_import import ProtImportTs
 

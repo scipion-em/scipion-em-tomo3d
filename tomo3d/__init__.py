@@ -25,23 +25,24 @@
 # *
 # **************************************************************************
 """
-This package contains the protocols and data for jjsoft
+This package contains the protocols and data for tomo3d and related software
 """
 from os.path import join
 import pwem
 from pyworkflow.utils import yellowStr
-from .constants import JJSOFT_HOME, JJSOFT, JJSOFT_README, JJSOFT_BIN_VERSION, TOMO3D
+from .constants import TOMO3D_HOME, TOMO3D_PKG, PLUGIN_README, TOMO3D_VERSION, TOMO3D_BIN, PLUGIN_URL
 
 __version__ = '3.0.3'
 
 
 class Plugin(pwem.Plugin):
-    _homeVar = JJSOFT_HOME
-    _pathVars = [JJSOFT_HOME]
+    _homeVar = TOMO3D_HOME
+    _pathVars = [TOMO3D_HOME]
+    _url = PLUGIN_URL
 
     @classmethod
     def _defineVariables(cls):
-        cls._defineEmVar(JJSOFT_HOME, JJSOFT + '-%s' % JJSOFT_BIN_VERSION)
+        cls._defineEmVar(TOMO3D_HOME, TOMO3D_PKG + '-%s' % TOMO3D_VERSION)
 
     @classmethod
     def getTomoBFlowProgram(cls):
@@ -61,7 +62,7 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def getTomo3dProgram(cls):
-        return join(cls.getHome(), TOMO3D)
+        return join(cls.getHome(), TOMO3D_BIN)
 
     @classmethod
     def getTomoRecProgram(cls):
@@ -72,16 +73,16 @@ class Plugin(pwem.Plugin):
         # At this point of the installation execution cls.getHome() is None, so the em path should be provided
         # Only the directory will be generated, because the binaries must be downloaded manually from José
         # Jesús website, filling a form
-        JJSOFT_INSTALLED = 'readme.txt'
-        msg = 'Binaries must be installed manually. Please follow the instructions described here: ' + JJSOFT_README
+        TOMO3D_INSTALLED = 'readme.txt'
+        msg = 'Binaries must be installed manually. Please follow the instructions described here: ' + PLUGIN_README
         # installationCmd = 'touch %s &&' % JJSOFT_INSTALLED  # Flag installation finished
-        installationCmd = 'echo %s && ' % yellowStr(msg.upper())
-        installationCmd += 'echo "%s" >> %s' % (msg, JJSOFT_INSTALLED)
+        installationCmd = 'echo %s && ' % yellowStr(msg)
+        installationCmd += 'echo "%s" >> %s' % (msg, TOMO3D_INSTALLED)
 
-        env.addPackage(JJSOFT,
-                       version=JJSOFT_BIN_VERSION,
+        env.addPackage(TOMO3D_PKG,
+                       version=TOMO3D_VERSION,
                        tar='void.tgz',
-                       commands=[(installationCmd, JJSOFT_INSTALLED)],
+                       commands=[(installationCmd, TOMO3D_INSTALLED)],
                        neededProgs=["wget", "tar"],
                        default=True)
 

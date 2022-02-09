@@ -27,7 +27,7 @@ from os.path import basename
 
 from pyworkflow import BETA
 from tomo.protocols import ProtTomoBase
-from jjsoft import Plugin
+from tomo3d import Plugin
 
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, PointerParam

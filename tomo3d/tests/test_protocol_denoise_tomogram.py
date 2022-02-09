@@ -30,7 +30,7 @@ from os.path import exists
 import numpy as np
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr, removeBaseExt
-from jjsoft.protocols.protocol_denoise_tomogram import ProtJjsoftProtDenoiseTomogram, DENOISE_EED, DENOISE_BF
+from tomo3d.protocols.protocol_denoise_tomogram import ProtJjsoftProtDenoiseTomogram, DENOISE_EED, DENOISE_BF
 from tomo.protocols.protocol_import_tomograms import ProtImportTomograms
 
 

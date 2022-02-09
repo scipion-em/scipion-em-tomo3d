@@ -25,10 +25,11 @@
 # *
 # **************************************************************************
 
-JJSOFT = 'jjsoft'
-JJSOFT_HOME = "JJSOFT_HOME"
-JJSOFT_URL = 'https://github.com/scipion-em/scipion-em-jjsoft/blob/devel/'
-JJSOFT_README = JJSOFT_URL + 'README.rst'
-JJSOFT_BIN_VERSION = '22.01.27'
-TOMO3D = 'tomo3d'
+
+TOMO3D_PKG = 'tomo3d'
+TOMO3D_HOME = "TOMO3D_HOME"
+PLUGIN_URL = 'https://github.com/scipion-em/scipion-em-tomo3d'
+PLUGIN_README = PLUGIN_URL + '/blob/devel/README.rst'
+TOMO3D_VERSION = '22.01.27'
+TOMO3D_BIN = 'tomo3d'
 

@@ -43,6 +43,10 @@ from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatP
 from tomo.objects import Tomogram
 import os
 
+# Reconstruction methods
+WBP = 0
+SIRT = 1
+
 
 class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
     """ Reconstruct tomograms from aligned tilt series using TOMO3D from
@@ -56,11 +60,11 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
     def _defineParams(self, form):
         self._defineInputParams(form)
         form.addParam('method', EnumParam,
-                      choices=['WBP (Fast)', 'SIRT (Slow)'], default=0,
+                      choices=['WBP (Fast)', 'SIRT (Slow)'], default=WBP,
                       label='Reconstruction method',
                       help='Reconstrution method to use')
         form.addParam('nIterations', IntParam, default=30,
-                      condition='method==1',
+                      condition='method==%i' % SIRT,
                       label='Number of Iterations (SIRT)',
                       help='Number of Iterations used in the SIRT method')
         form.addParam('Hamming', FloatParam, default=0.0,
@@ -100,7 +104,7 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
         TsPath, AnglesPath = self.getTsFiles(workingFolder, tsId)
         outTomoPath = workingFolder + '/tomo_{}.mrc'.format(tsId)
         params = ''
-        if self.method.get() == 1:
+        if self.method.get() == SIRT:
             params += ' -S -l %i ' % self.nIterations.get()
         if self.setShape.get():
             if self.width.get() != 0:

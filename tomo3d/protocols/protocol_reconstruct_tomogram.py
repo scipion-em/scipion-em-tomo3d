@@ -102,7 +102,7 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
     def reconstructTomogramStep(self, tsId, workingFolder):
         # We start preparing writing those elements we're using as input to keep them untouched
         TsPath, AnglesPath = self.getTsFiles(workingFolder, tsId)
-        outTomoPath = workingFolder + '/tomo_{}.mrc'.format(tsId)
+        outTomoPath = join(workingFolder, '%s.mrc' % tsId)
         params = ''
         if self.method.get() == SIRT:
             params += ' -S -l %i ' % self.nIterations.get()

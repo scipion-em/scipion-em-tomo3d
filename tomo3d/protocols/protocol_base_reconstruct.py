@@ -96,8 +96,8 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
         axis to recover the original orientation (due to jjsoft design)"""
         outPath = self._getExtraPath(tsId)
         makePath(outPath)
-        inTomoFile = join(self._getTmpPath(tsId), 'tomo_%s.mrc' % tsId)
-        outTomoFile = join(outPath, 'tomo_%s.mrc' % tsId)
+        inTomoFile = join(self._getTmpPath(tsId), '%s.mrc' % tsId)
+        outTomoFile = join(outPath, '%s.mrc' % tsId)
 
         with mrcfile.open(inTomoFile, mode='r', permissive=True) as mrc:
             rotData = np.rot90(mrc.data)

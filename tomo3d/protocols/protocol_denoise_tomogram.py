@@ -1,6 +1,6 @@
 # **************************************************************************
 # *
-# * Authors:     Daniel Del Hoyo Gomez (daniel.delhoyo.gomez@alumnos.upm.es)
+# * Authors:     Scipion Team
 # *
 # * Unidad de  Bioinformatica of Centro Nacional de Biotecnologia , CSIC
 # *
@@ -38,7 +38,7 @@ DENOISE_EED = 0
 DENOISE_BF = 1
 
 
-class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
+class ProtTomo3dProtDenoiseTomogram(EMProtocol, ProtTomoBase):
     """ Denoises sets of tomograms using methods described in https://sites.google.com/site/3demimageprocessing/
     Returns the set of denoised tomograms
     """

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # **************************************************************************
 # *
-# * Authors:     Jose Gutierrez (jose.gutierrez@cnb.csic.es)
+# * Authors:     Scipion Team
 # *
-# * Unidad de Bioinformatica of Centro Nacional de Biotecnologia , CSIC
+# * Unidad de  Bioinformatica of Centro Nacional de Biotecnologia , CSIC
 # *
 # * This program is free software; you can redistribute it and/or modify
 # * it under the terms of the GNU General Public License as published by
@@ -28,20 +28,17 @@
 This module implement some wizards
 """
 from pyworkflow.wizard import Wizard
-from .protocols import ProtJjsoftProtDenoiseTomogram
-
-#===============================================================================
-# CONSENSUS RADIUS
-#===============================================================================
+from .protocols import ProtTomo3dProtDenoiseTomogram
+from .protocols.protocol_denoise_tomogram import DENOISE_EED
 
 
-class JJDenoiseIterationsWizard(Wizard):
-    _targets = [(ProtJjsoftProtDenoiseTomogram, ['nIter'])]
+class Tomo3dDenoiseIterationsWizard(Wizard):
+    _targets = [(ProtTomo3dProtDenoiseTomogram, ['nIter'])]
 
     def _getNiter(self, protocol):
-        if protocol.method.get() == protocol.DENOISE_EED:
+        if protocol.method.get() == DENOISE_EED:
             nIter = 10
-        elif protocol.method.get() == protocol.DENOISE_BF:
+        else:  # BFlow
             nIter = 70
         return nIter
 

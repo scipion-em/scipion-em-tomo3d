@@ -1,6 +1,6 @@
 # **************************************************************************
 # *
-# * Authors:     Daniel Del Hoyo Gomez (daniel.delhoyo.gomez@alumnos.upm.es)
+# * Authors:     Scipion Team
 # *
 # * Unidad de  Bioinformatica of Centro Nacional de Biotecnologia , CSIC
 # *
@@ -24,23 +24,11 @@
 # *
 # **************************************************************************
 from os.path import join
-
-import mrcfile
-import numpy as np
-
 from tomo3d.protocols.protocol_base_reconstruct import ProtBaseReconstruct
-from pwem.emlib.image import ImageHandler
-from pwem.objects import Transform
 from pyworkflow import BETA
 from pyworkflow.utils import makePath
-
 from tomo3d import Plugin
-from tomo.protocols import ProtTomoBase
-
-from pwem.protocols import EMProtocol
-from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatParam
-
-from tomo.objects import Tomogram
+from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam
 import os
 
 # Reconstruction methods
@@ -48,7 +36,7 @@ WBP = 0
 SIRT = 1
 
 
-class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
+class ProtTomo3dReconstructTomogram(ProtBaseReconstruct):
     """ Reconstruct tomograms from aligned tilt series using TOMO3D from
     Software from: https://sites.google.com/site/3demimageprocessing/
     Returns the set of tomograms

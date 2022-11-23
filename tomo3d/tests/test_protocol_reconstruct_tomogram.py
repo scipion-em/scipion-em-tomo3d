@@ -29,7 +29,7 @@ import numpy as np
 from os.path import exists
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
-from tomo3d.protocols.protocol_reconstruct_tomogram import ProtJjsoftReconstructTomogram
+from tomo3d.protocols.protocol_reconstruct_tomogram import ProtTomo3dReconstructTomogram
 from tomo.protocols.protocol_ts_import import ProtImportTs
 
 
@@ -71,7 +71,7 @@ class TestTomogramReconstruction(BaseTest):
         print ("\n", magentaStr(" Test tomo3D reconstruction with WBP".center(75, '-')))
 
         # preparing and launching the protocol
-        ptomo3D = self.newProtocol(ProtJjsoftReconstructTomogram,
+        ptomo3D = self.newProtocol(ProtTomo3dReconstructTomogram,
                                    inputSetOfTiltSeries=self.setOfTs,
                                    method=0)
         self.launchProtocol(ptomo3D, wait=True)
@@ -84,7 +84,7 @@ class TestTomogramReconstruction(BaseTest):
         print ("\n", magentaStr(" Test tomo3D reconstruction with SIRT".center(75, '-')))
 
         # preparing and launching the protocol
-        ptomo3D = self.newProtocol(ProtJjsoftReconstructTomogram,
+        ptomo3D = self.newProtocol(ProtTomo3dReconstructTomogram,
                                    inputSetOfTiltSeries=self.setOfTs,
                                    method=1,
                                    nIterations=1)

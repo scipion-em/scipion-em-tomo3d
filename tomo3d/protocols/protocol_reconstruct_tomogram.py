@@ -25,22 +25,14 @@
 # **************************************************************************
 from os.path import join
 
-import mrcfile
-import numpy as np
 
 from tomo3d.protocols.protocol_base_reconstruct import ProtBaseReconstruct
-from pwem.emlib.image import ImageHandler
-from pwem.objects import Transform
 from pyworkflow import BETA
 from pyworkflow.utils import makePath
 
 from tomo3d import Plugin
-from tomo.protocols import ProtTomoBase
+from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam
 
-from pwem.protocols import EMProtocol
-from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatParam
-
-from tomo.objects import Tomogram
 import os
 
 # Reconstruction methods
@@ -78,16 +70,27 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
     def _insertAllSteps(self):
         """ Insert every step of the protocol"""
         self._insertFunctionStep(self.convertInputStep)
-        # self.outputFiles = []
+
         for ts in self.inputSetOfTiltSeries.get():
+
             tsId = ts.getTsId()
             workingFolder = self.getWorkingDirName(tsId)
             self._insertFunctionStep(self.reconstructTomogramStep, tsId, workingFolder)
+
         self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions --------------------------------------------
     def convertInputStep(self):
         for ts in self.inputSetOfTiltSeries.get():
+
+            excludedViewsCount = len(ts.getExcludedViewsIndex())
+
+            if excludedViewsCount > 0:
+                msg = "Invalid input: Tomo 3d does not work with excluded views and Tilt series %s has %d " \
+                      "Try to remove them with imod exclude views protocol. Stopping now." % (ts.getTsId(), excludedViewsCount)
+                self.warning(msg)
+                raise AttributeError(msg)
+
             tsId = ts.getTsId()
             workingFolder = self.getWorkingDirName(tsId)
             prefix = os.path.join(workingFolder, tsId)
@@ -134,13 +137,6 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
     def _citations(self):
         return ['Fernandez2018', 'Fernandez2009']
 
-    # # --------------------------- UTILS functions --------------------------------------------
-    # def get_Ts_files(self,ts_folder,TsId):
-    #     """Returns the path of the Tilt Serie and the angles files"""
-    #     prefix = os.path.join(ts_folder, TsId)
-    #     TsPath = prefix + '.st'
-    #     AnglesPath = prefix + '.rawtlt'
-    #     return TsPath, AnglesPath
-
+# --------------------------- UTILS functions --------------------------------------------
 
 

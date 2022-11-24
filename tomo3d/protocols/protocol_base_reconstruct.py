@@ -57,7 +57,7 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
         form.addSection(label='Input')
         form.addParam('inputSetOfTiltSeries', PointerParam, important=True,
                       pointerClass='SetOfTiltSeries',
-                      label='Interpolated Tilt Series')
+                      label='Tilt Series')
 
     @staticmethod
     def _defineSetShapeParams(form):

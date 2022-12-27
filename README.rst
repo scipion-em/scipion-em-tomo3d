@@ -1,59 +1,112 @@
-=============
-tomo3d plugin
-=============
+=======================
+Scipion - PySeg plugin
+=======================
 
-This plugin allows to use https://sites.google.com/site/3demimageprocessing/ software within the Scipion framework.
-The binaries for the plugin must be download manually.
+This plugin allows to use some of the software packages from 3demimageprocessing_ within the Scipion framework.
+**The binaries for the plugin MUST be downloaded manually**:
 
-=====
-Setup
-=====
+====================================
+Setup - Binaries manual installation
+====================================
 
-- **Install this plugin:**
+The following binaries are used by tomo3d protocols. All of them can be found in 3demimageprocessing_. These are:
+
+- tomo3d_
+- tomobflow_
+- tomoeed_
+
+To get each of them, click on the corresponding link and fill the form located at the bottom of the displayed webpage.
+Once all of them have been downloaded, place them in scipionDirectory/software/em/tomo3d-VersionNumber.Thus, the final 
+file structure expected by Scipion should look like this, being the listed files below the binaries or a link pointing to each:
+
+scipionDirectory/software/em/tomo3d-VersionNumber
+
+- tomo3d
+- tomobflow
+- tomoeed
+
+============
+Installation
+============
+
+The plugin can be installed in user (stable) or developer (latest, may be unstable) mode:
+
+**1. User (stable) version:**:
 
 .. code-block::
 
     scipion installp -p scipion-em-tomo3d
 
-OR
+**2. Developer (latest, may be unstable) version:**:
 
-  - through the plugin manager GUI by launching Scipion and following **Configuration** >> **Plugins**
-
-Alternatively, in devel mode:
+* Clone the source code repository:
 
 .. code-block::
 
-    scipion installp -p local/path/to/scipion-em-tomo3d --devel
+    git clone https://github.com/scipion-em/scipion-em-tomo3d.git
+    
+* Install:
 
-===================================
-Manual installation of the binaries
-===================================
+.. code-block::
 
-Four binaries are used by tomo3d protocols. All of them can be found in 3demimageprocessing_. These are:
+    scipion3 installp -p local/path/to/scipion-em-tomo3d --devel
 
-- tomo3d_
-- tomowarpalign_
-- tomobflow_
-- tomoeed_
+=========
+Protocols
+=========
+The integrated protocols are:
 
-To get each of them, click on the corresponding link and fill the form located at the bottom of the displayed webpage.
-Once all of them have been downloaded, place them in scipionDirectory/software/em/tomo3d-VersionNumber. To avoid
-version binary names mismatching, they should be renamed or linked, so the names that appear inside the mentioned
-directory are tomo3d, tomowarpalign, tomobflow and tomoeed, respectively. Thus, the final file structure expected by
-Scipion should look like this:
+1. ProtJjsoftProtDenoiseTomogram ( tomo3d - denoise tomogram )
+  doc:   Denoises tomograms
+    
+2. ProtJjsoftReconstructTomogram ( tomo3d - reconstruct tomogram )
+  doc:   Reconstruct tomograms
 
-scipionDirectory/software/em/tomo3d-VersionNumber
+=====
+Tests
+=====
 
-- tomo3d
-- tomowarpalign
-- tomobflow
-- tomoeed
-- readme.txt (plugin installation file, generated automatically during the plugin installation)
+The installation can be checked out running some tests:
 
+.. code-block::
 
+     scipion3 tests tomo3d.tests.test_protocol_reconstruct_tomogram
+
+.. code-block::
+
+    scipion3 tests tomo3d.tests.test_protocol_denoise_tomogram
+    
+
+==========
+References
+==========
+
+* `Fast tomographic reconstruction on multicore computers. <https://doi.org/10.1093/bioinformatics/btq692>`_
+  J.I. Agulleiro, J.J. Fernandez. Bioinformatics 27:582-583, 2011.
+
+* `Tomo3D 2.0 – Exploitation of Advanced Vector eXtensions (AVX) for 3D reconstruction. <https://doi.org/10.1016/j.jsb.2014.11.009>`_
+  J.I. Agulleiro, J.J. Fernandez. Journal of Structural Biology 189:147-152, 2015.
+  
+* `TOMOBFLOW: feature-preserving noise filtering for electron tomography. <https://doi.org/10.1186/1471-2105-10-178>`_
+  J.J. Fernandez. BMC Bioinformatics 2009, 10:178.
+  
+* `TomoEED: Fast Edge-Enhancing Denoising of Tomographic Volumes. <https://doi.org/10.1093/bioinformatics/bty435>`_
+  J.J. Moreno, A. Martinez-Sanchez, J.A. Martinez, E.M. Garzon, J.J. Fernandez. Bioinformatics 34:3776-3778, 2018. 
+  
+===================
+Contact information
+===================
+
+If you experiment any problem, please contact us here: scipion-users@lists.sourceforge.net, scipion@cnb.csic.es or open an issue_.
+
+We'll be pleased to help.
+
+*Scipion Team*
+  
 
 .. _3demimageprocessing: https://sites.google.com/site/3demimageprocessing/
 .. _tomo3d: https://sites.google.com/site/3demimageprocessing/tomo3d
 .. _tomowarpalign: https://sites.google.com/site/3demimageprocessing/tomoalign
 .. _tomobflow: https://sites.google.com/site/3demimageprocessing/tomobflow
 .. _tomoeed: https://sites.google.com/site/3demimageprocessing/tomoeed
+.. _issue: https://github.com/scipion-em/scipion-em-tomo3d/issues

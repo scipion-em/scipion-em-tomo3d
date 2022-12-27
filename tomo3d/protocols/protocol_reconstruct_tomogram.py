@@ -41,7 +41,7 @@ SIRT = 1
 
 
 class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
-    """ Reconstruct tomograms from aligned tilt series using TOMO3D from
+    """ Reconstruct tomograms using TOMO3D from
     Software from: https://sites.google.com/site/3demimageprocessing/
     Returns the set of tomograms
     """

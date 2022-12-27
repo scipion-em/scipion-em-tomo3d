@@ -53,7 +53,7 @@
   Keywords                 = {},
   Pii                      = {},
   Issn                     = {1047-8477},
-  Url                      = {https://www.sciencedirect.com/science/article/pii/S1047847714002603}
+  Url                      = {https://doi.org/10.1016/j.jsb.2014.11.009}
 }
 
 @Article{Fernandez2018_tomoeed,
@@ -69,7 +69,7 @@
   Keywords                 = {},
   Pii                      = {},
   Issn                     = {1367-4803},
-  Url                      = {https://academic.oup.com/bioinformatics/article/34/21/3776/5021692}
+  Url                      = {https://doi.org/10.1093/bioinformatics/bty435}
 }
 
 @Article{Fernandez2009_tomobflow,
@@ -85,7 +85,7 @@
   Keywords                 = {},
   Pii                      = {},
   Issn                     = {1471-2105},
-  Url                      = {https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-10-178}
+  Url                      = {https://doi.org/10.1186/1471-2105-10-178}
 }
 
 @Article{Fernandez2003,

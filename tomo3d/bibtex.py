@@ -1,4 +1,4 @@
-# coding: latin-1
+# -*- coding: utf-8 -*-
 # **************************************************************************
 # *
 # * Authors:     Jose Luis Vilas (jlvilas@cnb.csic.es)
@@ -25,23 +25,54 @@
 # *
 # **************************************************************************
 """
-@Article{Fernandez2018,
-  Title                    = {TomoEED: Fast Edge-Enhancing Denoising of Tomographic Volumes},
-  Author                   = {J.J. Moreno, A. Martinez-Sanchez, J.A. Martinez, E.M. Garzon, J.J. Fernandez},
+@Article{Fernandez2010_tomo3d,
+  Title                    = {Fast tomographic reconstruction on multicore computers},
+  Author                   = {Agulleiro, J. I. and Fernandez, J. J.},
   Journal                  = {Bioinformatics},
-  Year                     = {2018},
-  Month                    = {Nov},
-  Number                   = {1},
-  Pages                    = {3776?3778},
-  Volume                   = {34},
-  Doi                      = {10.1093/bioinformatics/bty435},
+  Year                     = {2010},
+  Month                    = {Dec},
+  Number                   = {4},
+  Pages                    = {582-583},
+  Volume                   = {27},
+  Doi                      = {https://doi.org/10.1093/bioinformatics/btq692},
   Keywords                 = {},
   Pii                      = {},
-  Pmid                     = {29850773},
-  Url                      = {https://doi.org/10.1093/bioinformatics/bty435}
+  Issn                     = {1367-4803},
+  Url                      = {https://doi.org/10.1093/bioinformatics/btq692}
 }
 
-@Article{Fernandez2009,
+@Article{Fernandez2015_tomo3d,
+  Title                    = {Tomo3D 2.0 – Exploitation of Advanced Vector eXtensions (AVX) for 3D reconstruction},
+  Author                   = {Agulleiro, J. I. and Fernandez, J. J.},
+  Journal                  = {Journal of Structural Biology},
+  Year                     = {2015},
+  Number                   = {2},
+  Pages                    = {147-152},
+  Volume                   = {189},
+  Doi                      = {https://doi.org/10.1016/j.jsb.2014.11.009},
+  Keywords                 = {},
+  Pii                      = {},
+  Issn                     = {1047-8477},
+  Url                      = {https://www.sciencedirect.com/science/article/pii/S1047847714002603}
+}
+
+@Article{Fernandez2018_tomoeed,
+  Title                    = {TomoEED: Fast Edge-Enhancing Denoising of Tomographic Volumes},
+  Author                   = {Moreno, J J and Martínez-Sánchez, A and Martínez, J A and Garzón, E M and Fernández, J J},
+  Journal                  = {Bioinformatics},
+  Year                     = {2018},
+  Month                    = {May},
+  Number                   = {21},
+  Pages                    = {3776-3778},
+  Volume                   = {34},
+  Doi                      = {https://doi.org/10.1093/bioinformatics/bty435},
+  Keywords                 = {},
+  Pii                      = {},
+  Issn                     = {1367-4803},
+  Url                      = {https://academic.oup.com/bioinformatics/article/34/21/3776/5021692}
+}
+
+@Article{Fernandez2009_tomobflow,
   Title                    = {TOMOBFLOW: feature-preserving noise filtering for electron tomography},
   Author                   = {J.J. Fernandez},
   Journal                  = {BMC Bioinformatics},
@@ -50,11 +81,11 @@
   Number                   = {12},
   Pages                    = {},
   Volume                   = {10},
-  Doi                      = {10.1186/1471-2105-10-178},
-  Keywords                 = {Noise Reduction; Memory Consumption; Edge Indicator; Noise Reduction Technique; Alga Chloroplast},
+  Doi                      = {https://doi.org/10.1186/1471-2105-10-178},
+  Keywords                 = {},
   Pii                      = {},
-  Pmid                     = {19523199},
-  Url                      = {https://doi.org/10.1186/1471-2105-10-178}
+  Issn                     = {1471-2105},
+  Url                      = {https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-10-178}
 }
 
 @Article{Fernandez2003,

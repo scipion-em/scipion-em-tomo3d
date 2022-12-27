@@ -135,7 +135,7 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
         pass
 
     def _citations(self):
-        return ['Fernandez2018', 'Fernandez2009']
+        return ['Fernandez2010_tomo3d', 'Fernandez2015_tomo3d']
 
 # --------------------------- UTILS functions --------------------------------------------
 

@@ -139,7 +139,7 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
         pass
 
     def _citations(self):
-        return ['Fernandez2018', 'Fernandez2009']
+        return ['Fernandez2018_tomoeed', 'Fernandez2009_tomobflow']
 
     # --------------------------- UTILS functions --------------------------------------------
     def call_BFlow(self, inp_tomo_path):

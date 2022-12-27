@@ -29,6 +29,7 @@ import numpy as np
 from os.path import exists
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
+from tomo3d.protocols.protocol_base_reconstruct import outputTomoRecObjects
 from tomo3d.protocols.protocol_reconstruct_tomogram import ProtJjsoftReconstructTomogram
 from tomo.protocols.protocol_ts_import import ProtImportTs
 
@@ -75,7 +76,7 @@ class TestTomogramReconstruction(BaseTest):
                                    inputSetOfTiltSeries=self.setOfTs,
                                    method=0)
         self.launchProtocol(ptomo3D, wait=True)
-        setOfReconstructedTomograms = ptomo3D.outputTomograms
+        setOfReconstructedTomograms = getattr(ptomo3D, outputTomoRecObjects.tomograms.name, None)
 
         # check results
         self._checkResults(setOfReconstructedTomograms)
@@ -89,7 +90,7 @@ class TestTomogramReconstruction(BaseTest):
                                    method=1,
                                    nIterations=1)
         self.launchProtocol(ptomo3D, wait=True)
-        setOfReconstructedTomograms = ptomo3D.outputTomograms
+        setOfReconstructedTomograms = getattr(ptomo3D, outputTomoRecObjects.tomograms.name, None)
 
         # check results
         self._checkResults(setOfReconstructedTomograms)

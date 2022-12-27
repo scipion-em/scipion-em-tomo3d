@@ -23,6 +23,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from enum import Enum
 from os.path import join
 
 import mrcfile
@@ -34,7 +35,11 @@ from tomo.protocols import ProtTomoBase
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, BooleanParam
 
-from tomo.objects import Tomogram
+from tomo.objects import Tomogram, SetOfTomograms
+
+
+class outputTomoRecObjects(Enum):
+    tomograms = SetOfTomograms
 
 
 class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
@@ -119,7 +124,7 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
             tomo.setTsId(ts.getTsId())
             outputTomos.append(tomo)
 
-        self._defineOutputs(outputTomograms=outputTomos)
+        self._defineOutputs(**{outputTomoRecObjects.tomograms.name:outputTomos})
         self._defineSourceRelation(self.inputSetOfTiltSeries, outputTomos)
 
     # --------------------------- INFO functions --------------------------------------------

@@ -10,7 +10,7 @@ from setuptools import setup, find_packages
 # To use a consistent encoding
 from codecs import open
 from os import path
-from jjsoft import __version__
+from tomo3d import __version__
 
 here = path.abspath(path.dirname(__file__))
 
@@ -22,16 +22,16 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 # Fields marked as "Optional" may be commented out.
 
 setup(
-    name='scipion-em-jjsoft',  # Required
+    name='scipion-em-tomo3d',  # Required
     version=__version__,  # Required
-    description='jjsoft ready to use in scipion.',  # Required
+    description='tomo3d and other software at https://sites.google.com/site/3demimageprocessing/Home ready to use in scipion.',  # Required
     long_description=long_description,  # Optional
-    url='https://github.com/scipion-em/scipion-em-jjsoft',  # Optional
+    url='https://github.com/scipion-em/scipion-em-tomo3d',  # Optional
     author='I2PC',  # Optional
     author_email='scipion@cnb.csic.es',  # Optional
     keywords='scipion cryoem imageprocessing scipion-3.0',  # Optional
     packages=find_packages(),
     entry_points={
-        'pyworkflow.plugin': 'jjsoft = jjsoft'
+        'pyworkflow.plugin': 'tomo3d = tomo3d'
     }
 )

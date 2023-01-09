@@ -23,16 +23,24 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from enum import Enum
+from os.path import basename
+
+from pyworkflow import BETA
 from tomo.protocols import ProtTomoBase
-from jjsoft import Plugin
+from tomo3d import Plugin
 
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, PointerParam
 
-from tomo.objects import Tomogram
+from tomo.objects import Tomogram, SetOfTomograms
 
 DENOISE_EED = 0
 DENOISE_BF = 1
+
+
+class outputDenoiseObjects(Enum):
+    tomograms = SetOfTomograms
 
 
 class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
@@ -40,6 +48,8 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
     Returns the set of denoised tomograms
     """
     _label = 'denoise tomogram'
+    _devStatus = BETA
+    _possibleOutputs = outputDenoiseObjects
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
@@ -82,10 +92,10 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
         self.outputFiles = []
         pre = []
         for tomo in inputTomos.iterItems():
-            stepId = self._insertFunctionStep('denoiseTomogramStep', tomo.getFileName())
+            stepId = self._insertFunctionStep(self.denoiseTomogramStep, tomo.getFileName())
             pre.append(stepId)
 
-        self._insertFunctionStep('createOutputStep', prerequisites=pre)
+        self._insertFunctionStep(self.createOutputStep, prerequisites=pre)
 
     # --------------------------- STEPS functions --------------------------------------------
     def denoiseTomogramStep(self, inp_tomo_path):
@@ -95,7 +105,7 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
             # call EED
             out_tomo_path = self.call_EED(inp_tomo_path)
 
-        elif self.method.get() == DENOISE_BF:
+        else:  # self.method.get() == DENOISE_BF:
             print('Denoising by BFlow')
             # call BFlow
             out_tomo_path = self.call_BFlow(inp_tomo_path)
@@ -110,13 +120,11 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
         for i, inp_tomo in enumerate(inputTomos):
             tomo_path = self.outputFiles[i]
             tomo = Tomogram()
+            tomo.copyInfo(inp_tomo)
             tomo.setLocation(tomo_path)
-            tomo.setOrigin(inp_tomo.getOrigin())
-            tomo.setAcquisition(inp_tomo.getAcquisition())
             outputTomos.append(tomo)
 
-        self._defineOutputs(outputTomograms=outputTomos)
-        self.outputTomograms=outputTomos
+        self._defineOutputs(**{outputDenoiseObjects.tomograms.name: outputTomos})
         self._defineSourceRelation(self.inputSetTomograms, outputTomos)
 
     # --------------------------- INFO functions --------------------------------------------
@@ -131,26 +139,26 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
         pass
 
     def _citations(self):
-        return ['Fernandez2018','Fernandez2009']
+        return ['Fernandez2018_tomoeed', 'Fernandez2009_tomobflow']
 
     # --------------------------- UTILS functions --------------------------------------------
     def call_BFlow(self, inp_tomo_path):
-        '''Denoises de tomogram using the AND method'''
+        """Denoises de tomogram using the AND method"""
         params = '-g {} -i {} -s {} -t {}'.format(self.SigmaGaussian.get(), self.nIter.get(),
                                                   self.TimeStep.get(), self.numberOfThreads)
-        out_tomo_path = self._getExtraPath('denoisedBflow_'+inp_tomo_path.split('/')[-1])
+        out_tomo_path = self._getExtraPath(basename(inp_tomo_path))
         args = '{} {} {}'.format(params, inp_tomo_path, out_tomo_path)
         self.runJob(Plugin.getTomoBFlowProgram(), args)
         return out_tomo_path
 
     def call_EED(self, inp_tomo_path):
-        '''Denoises de tomogram using the AND method'''
+        """Denoises de tomogram using the AND method"""
         if self.Lambda.get() < 0:
             params = '-g {} -i {} -s {}'.format(self.SigmaGaussian.get(), self.nIter.get(), self.TimeStep.get())
         else:
             params = '-g {} -i {} -s {} -k {}'.format(self.SigmaGaussian.get(), self.nIter.get(),
                                                       self.TimeStep.get(),self.Lambda.get())
-        out_tomo_path = self._getExtraPath('denoisedEED_'+inp_tomo_path.split('/')[-1])
+        out_tomo_path = self._getExtraPath(basename(inp_tomo_path))
         args = '{} {} {}'.format(params, inp_tomo_path, out_tomo_path)
         self.runJob(Plugin.getTomoEEDProgram(), args)
         return out_tomo_path

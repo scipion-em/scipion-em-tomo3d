@@ -1,6 +1,6 @@
 # **************************************************************************
 # *
-# * Authors:     Daniel Del Hoyo Gomez (daniel.delhoyo.gomez@alumnos.upm.es)
+# * Authors:     Scipion Team
 # *
 # * Unidad de  Bioinformatica of Centro Nacional de Biotecnologia , CSIC
 # *
@@ -23,61 +23,56 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from enum import Enum
 from os.path import join
 
 import mrcfile
 import numpy as np
-from pwem.emlib.image import ImageHandler
-from pwem.objects import Transform
 from pyworkflow.utils import makePath
 
-from jjsoft import Plugin
 from tomo.protocols import ProtTomoBase
 
 from pwem.protocols import EMProtocol
-from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatParam
+from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, BooleanParam
 
-from tomo.objects import Tomogram
-import os
+from tomo.objects import Tomogram, SetOfTomograms
 
 
-class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
+class outputTomoRecObjects(Enum):
+    tomograms = SetOfTomograms
+
+
+class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
     """ Reconstruct tomograms from aligned tilt series using TOMO3D from
     Software from: https://sites.google.com/site/3demimageprocessing/
     Returns the set of tomograms
     """
-    _label = 'reconstruct tomogram'
-
-    def __init__(self, **args):
-        EMProtocol.__init__(self, **args)
 
     # --------------------------- DEFINE param functions --------------------------------------------
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.outputFiles = []
+
     def _defineParams(self, form):
+        pass
+
+    @staticmethod
+    def _defineInputParams(form):
         # First we customize the inputParticles param to fit our needs in this protocol
         form.addSection(label='Input')
         form.addParam('inputSetOfTiltSeries', PointerParam, important=True,
                       pointerClass='SetOfTiltSeries',
-                      label='Input Tilt Series')
-        form.addParam('method', EnumParam,
-                      choices=['WBP (Fast)','SIRT (Slow)'], default=0,
-                      label='Reconstruction method',
-                      help='Reconstrution method to use')
-        form.addParam('nIterations', IntParam, default=30,
-                      condition='method==1',
-                      label='Number of Iterations (SIRT)',
-                      help='Number of Iterations used in the SIRT method')
-        form.addParam('Hamming', FloatParam, default=0.0,
-                      label='Hamming filter frequency',
-                      help='Frequency for the Hamming atenuation filter [0,0.5]. \n0 always uses the filter, 0.5 turns it off')
+                      label='Tilt Series')
 
-        form.addParam('setShape', EnumParam,
-                      choices=['Yes', 'No'],
-                      default=1,
+    @staticmethod
+    def _defineSetShapeParams(form):
+        form.addParam('setShape', BooleanParam,
+                      default=True,
                       label='Set manual tomogram shape',
                       display=EnumParam.DISPLAY_HLIST,
                       help='By deafault the shape of the tomogram is defined by the tilt series shape')
 
-        group = form.addGroup('Tomogram shape', condition='setShape==0')
+        group = form.addGroup('Tomogram shape', condition='setShape')
         group.addParam('width', IntParam,
                        default=0,
                        label='Width',
@@ -99,64 +94,15 @@ class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
 
     # --------------------------- INSERT steps functions --------------------------------------------
     def _insertAllSteps(self):
-        """ Insert every step of the protocol"""
-        pre1 = []
-        stepId = self._insertFunctionStep(self.convertInputStep)
-        pre1.append(stepId)
-
-        pre = []
-        self.outputFiles = []
-        for ts in self.inputSetOfTiltSeries.get():
-            tsId = ts.getTsId()
-            workingFolder = self._getTmpPath(tsId)
-            stepId = self._insertFunctionStep(self.reconstructTomogramStep, tsId, workingFolder, prerequisites=pre1)
-            pre.append(stepId)
-
-        self._insertFunctionStep(self.createOutputStep, prerequisites=pre)
-
-    # --------------------------- STEPS functions --------------------------------------------
-    def convertInputStep(self):
-        for ts in self.inputSetOfTiltSeries.get():
-            tsId = ts.getTsId()
-            workingFolder = self._getTmpPath(tsId)
-            prefix = os.path.join(workingFolder, tsId)
-            makePath(workingFolder)
-
-            outputStackFn = prefix + '.st'
-            outputTltFn = prefix + '.rawtlt'
-
-            ts.applyTransform(outputStackFn)
-            ts.generateTltFile(outputTltFn)
-
-    def reconstructTomogramStep(self, tsId, workingFolder):
-        # We start preparing writing those elements we're using as input to keep them untouched
-        TsPath, AnglesPath = self.get_Ts_files(workingFolder, tsId)
-        out_tomo_path = workingFolder + '/tomo_{}.mrc'.format(tsId)
-        params = ''
-        if self.method == 1:
-            params += ' -S -l '+str(self.nIterations)
-        if self.setShape.get() == 0:
-            if self.width.get() != 0:
-                params += ' -x {}'.format(self.width.get())
-            if self.finSlice.get() != 0:
-                params += ' -y {},{}'.format(self.iniSlice.get(), self.finSlice.get())
-            if self.height.get() != 0:
-                params += ' -z {}'.format(self.height.get())
-
-        args = '-i {} -a {} -o {} -t {}'.format(TsPath, AnglesPath, out_tomo_path, self.numberOfThreads)
-        args += params
-        self.runJob(Plugin.getTomoRecProgram(), args)
-
-        out_tomo_rx_path = self.rotXTomo(tsId)
-        self.outputFiles.append(out_tomo_rx_path)
+        pass
 
     def rotXTomo(self, tsId):
         """Result of the reconstruction must be rotated 90 degrees around the X
         axis to recover the original orientation (due to jjsoft design)"""
         outPath = self._getExtraPath(tsId)
-        os.mkdir(outPath)
-        inTomoFile = join(self._getTmpPath(tsId), 'tomo_%s.mrc' % tsId)
-        outTomoFile = join(outPath, 'tomo_%s.mrc' % tsId)
+        makePath(outPath)
+        inTomoFile = join(self._getTmpPath(tsId), '%s.mrc' % tsId)
+        outTomoFile = join(outPath, '%s.mrc' % tsId)
 
         with mrcfile.open(inTomoFile, mode='r', permissive=True) as mrc:
             rotData = np.rot90(mrc.data)
@@ -170,16 +116,15 @@ class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
         outputTomos = self._createSetOfTomograms()
         outputTomos.copyInfo(self.inputSetOfTiltSeries.get())
 
-        for i, inp_ts in enumerate(self.inputSetOfTiltSeries.get()):
-            tomo_path = self.outputFiles[i]
+        for tomoPath, ts in zip(self.outputFiles, self.inputSetOfTiltSeries.get()):
             tomo = Tomogram()
-            tomo.setLocation(tomo_path)
-            tomo.setSamplingRate(inp_ts.getSamplingRate())
+            tomo.setLocation(tomoPath)
+            tomo.setSamplingRate(ts.getSamplingRate())
             tomo.setOrigin()
-            tomo.setTsId(inp_ts.getTsId())
+            tomo.setTsId(ts.getTsId())
             outputTomos.append(tomo)
 
-        self._defineOutputs(outputTomograms=outputTomos)
+        self._defineOutputs(**{outputTomoRecObjects.tomograms.name:outputTomos})
         self._defineSourceRelation(self.inputSetOfTiltSeries, outputTomos)
 
     # --------------------------- INFO functions --------------------------------------------
@@ -197,12 +142,15 @@ class ProtJjsoftReconstructTomogram(EMProtocol, ProtTomoBase):
         return ['Fernandez2018','Fernandez2009']
 
     # --------------------------- UTILS functions --------------------------------------------
-    def get_Ts_files(self,ts_folder,TsId):
-        '''Returns the path of the Tilt Serie and the angles files'''
-        prefix = os.path.join(ts_folder, TsId)
+    @staticmethod
+    def getTsFiles(tsFolder, tsId):
+        """Returns the path of the Tilt Serie and the angles files"""
+        prefix = join(tsFolder, tsId)
         TsPath = prefix + '.st'
         AnglesPath = prefix + '.rawtlt'
         return TsPath, AnglesPath
 
+    def getWorkingDirName(self, tsId):
+        return self._getTmpPath(tsId)
 
 

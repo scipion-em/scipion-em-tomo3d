@@ -56,11 +56,9 @@ Protocols
 =========
 The integrated protocols are:
 
-1. ProtJjsoftProtDenoiseTomogram ( tomo3d - denoise tomogram )
-  doc:   Denoises tomograms
-    
-2. ProtJjsoftReconstructTomogram ( tomo3d - reconstruct tomogram )
-  doc:   Reconstruct tomograms
+1. tomo3d - denoise tomogram:
+
+2. tomo3d - reconstruct tomogram:
 
 =====
 Tests

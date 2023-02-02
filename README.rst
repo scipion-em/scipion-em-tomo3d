@@ -1,5 +1,5 @@
 =======================
-Scipion - PySeg plugin
+Scipion - Tomo3D plugin
 =======================
 
 This plugin allows to use some of the software packages from 3demimageprocessing_ within the Scipion framework.

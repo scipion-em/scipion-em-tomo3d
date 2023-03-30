@@ -72,9 +72,9 @@ Protocols
 =========
 The integrated protocols are:
 
-1. tomo3d - denoise tomogram
+1. tomo3d - denoise tomograms
 
-2. tomo3d - reconstruct tomogram
+2. tomo3d - reconstruct tomograms
 
 =====
 Tests

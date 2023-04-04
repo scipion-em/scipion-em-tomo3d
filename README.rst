@@ -1,6 +1,22 @@
-=======================
-Scipion - PySeg plugin
-=======================
+=========================
+Scipion plugin for Tomo3D
+=========================
+
+.. image:: https://img.shields.io/pypi/v/scipion-em-tomo3d.svg
+        :target: https://pypi.python.org/pypi/scipion-em-tomo3d
+        :alt: PyPI release
+
+.. image:: https://img.shields.io/pypi/l/scipion-em-tomo3d.svg
+        :target: https://pypi.python.org/pypi/scipion-em-tomo3d
+        :alt: License
+
+.. image:: https://img.shields.io/pypi/pyversions/scipion-em-tomo3d.svg
+        :target: https://pypi.python.org/pypi/scipion-em-tomo3d
+        :alt: Supported Python versions
+
+.. image:: https://img.shields.io/pypi/dm/scipion-em-tomo3d
+        :target: https://pypi.python.org/pypi/scipion-em-tomo3d
+        :alt: Downloads
 
 This plugin allows to use some of the software packages from 3demimageprocessing_ within the Scipion framework.
 **The binaries for the plugin MUST be downloaded manually**:
@@ -56,9 +72,9 @@ Protocols
 =========
 The integrated protocols are:
 
-1. tomo3d - denoise tomogram:
+1. tomo3d - denoise tomograms
 
-2. tomo3d - reconstruct tomogram:
+2. tomo3d - reconstruct tomograms
 
 =====
 Tests

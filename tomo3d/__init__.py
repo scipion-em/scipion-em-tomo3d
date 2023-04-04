@@ -32,7 +32,7 @@ import pwem
 from pyworkflow.utils import yellowStr
 from .constants import TOMO3D_HOME, TOMO3D_PKG, PLUGIN_README, TOMO3D_VERSION, TOMO3D_BIN, PLUGIN_URL
 
-__version__ = '3.1.0'
+__version__ = '3.1.1'
 
 
 class Plugin(pwem.Plugin):

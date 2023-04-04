@@ -83,12 +83,12 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
                        help='Height of the reconstructed tomogram (Default: width of the tomogram)')
         group.addParam('iniSlice', IntParam,
                        default=0,
-                       label='Initial slice',
-                       help='Initial slice (of range) to include')
+                       label='Initial slice on Y',
+                       help='Focus reconstruction instead of using default depth')
         group.addParam('finSlice', IntParam,
                        default=0,
-                       label='Final slice',
-                       help='Final slice (of range) to include (Maximum must be the size of tilt series)')
+                       label='Final slice on Y',
+                       help='Focus reconstruction instead of using default depth')
 
         form.addParallelSection(threads=4, mpi=0)
 

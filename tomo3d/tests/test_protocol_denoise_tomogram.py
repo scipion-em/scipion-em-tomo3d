@@ -66,7 +66,7 @@ class TestTomogramDenoising(BaseTest):
         cls.launchProtocol(pImpTomograms, wait=True)
 
         # Setting the set of tomograms object
-        return pImpTomograms.outputTomograms
+        return pImpTomograms.Tomograms
 
     def _runDenoising(self, denoisingMethod):
         # preparing and launching the protocol

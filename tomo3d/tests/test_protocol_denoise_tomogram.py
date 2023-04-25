@@ -30,7 +30,8 @@ from os.path import exists
 import numpy as np
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr, removeBaseExt
-from tomo3d.protocols.protocol_denoise_tomogram import ProtJjsoftProtDenoiseTomogram, DENOISE_EED, DENOISE_BF
+from tomo3d.protocols.protocol_denoise_tomogram import ProtJjsoftProtDenoiseTomogram, DENOISE_EED, DENOISE_BF, \
+    outputDenoiseObjects
 from tomo.protocols.protocol_import_tomograms import ProtImportTomograms
 
 
@@ -77,7 +78,7 @@ class TestTomogramDenoising(BaseTest):
                                        TimeStep=0.1,
                                        Lambda=-1.0)
         self.launchProtocol(pDenoiseEED, wait=True)
-        return pDenoiseEED.outputTomograms
+        return getattr(pDenoiseEED, outputDenoiseObjects.tomograms.name, None)
 
     def testDenoisingEED(self):
         print("\n", magentaStr(" Test EED denoising ".center(75, '-')))
@@ -85,7 +86,6 @@ class TestTomogramDenoising(BaseTest):
         setOfEEDDenoisedTomograms = self._runDenoising(DENOISE_EED)
         # check results
         self._checkResults(setOfEEDDenoisedTomograms)
-
 
     def testDenoisingBFlow(self):
         print ("\n", magentaStr(" Test BFlow denoising ".center(75, '-')))

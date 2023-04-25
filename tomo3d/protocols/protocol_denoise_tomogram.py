@@ -23,6 +23,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from enum import Enum
 from os.path import basename
 
 from pyworkflow import BETA
@@ -32,10 +33,14 @@ from tomo3d import Plugin
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, PointerParam
 
-from tomo.objects import Tomogram
+from tomo.objects import Tomogram, SetOfTomograms
 
 DENOISE_EED = 0
 DENOISE_BF = 1
+
+
+class outputDenoiseObjects(Enum):
+    tomograms = SetOfTomograms
 
 
 class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
@@ -44,6 +49,7 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
     """
     _label = 'denoise tomogram'
     _devStatus = BETA
+    _possibleOutputs = outputDenoiseObjects
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
@@ -118,7 +124,7 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
             tomo.setLocation(tomo_path)
             outputTomos.append(tomo)
 
-        self._defineOutputs(outputTomograms=outputTomos)
+        self._defineOutputs(**{outputDenoiseObjects.tomograms.name: outputTomos})
         self._defineSourceRelation(self.inputSetTomograms, outputTomos)
 
     # --------------------------- INFO functions --------------------------------------------
@@ -133,7 +139,7 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
         pass
 
     def _citations(self):
-        return ['Fernandez2018', 'Fernandez2009']
+        return ['Fernandez2018_tomoeed', 'Fernandez2009_tomobflow']
 
     # --------------------------- UTILS functions --------------------------------------------
     def call_BFlow(self, inp_tomo_path):

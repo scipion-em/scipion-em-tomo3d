@@ -23,6 +23,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from enum import Enum
 from os.path import join
 
 import mrcfile
@@ -34,7 +35,11 @@ from tomo.protocols import ProtTomoBase
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, BooleanParam
 
-from tomo.objects import Tomogram
+from tomo.objects import Tomogram, SetOfTomograms
+
+
+class outputTomoRecObjects(Enum):
+    tomograms = SetOfTomograms
 
 
 class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
@@ -57,7 +62,7 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
         form.addSection(label='Input')
         form.addParam('inputSetOfTiltSeries', PointerParam, important=True,
                       pointerClass='SetOfTiltSeries',
-                      label='Non Interpolated Tilt Series')
+                      label='Tilt Series')
 
     @staticmethod
     def _defineSetShapeParams(form):
@@ -78,12 +83,12 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
                        help='Height of the reconstructed tomogram (Default: width of the tomogram)')
         group.addParam('iniSlice', IntParam,
                        default=0,
-                       label='Initial slice',
-                       help='Initial slice (of range) to include')
+                       label='Initial slice on Y',
+                       help='Focus reconstruction instead of using default depth')
         group.addParam('finSlice', IntParam,
                        default=0,
-                       label='Final slice',
-                       help='Final slice (of range) to include (Maximum must be the size of tilt series)')
+                       label='Final slice on Y',
+                       help='Focus reconstruction instead of using default depth')
 
         form.addParallelSection(threads=4, mpi=0)
 
@@ -96,8 +101,8 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
         axis to recover the original orientation (due to jjsoft design)"""
         outPath = self._getExtraPath(tsId)
         makePath(outPath)
-        inTomoFile = join(self._getTmpPath(tsId), 'tomo_%s.mrc' % tsId)
-        outTomoFile = join(outPath, 'tomo_%s.mrc' % tsId)
+        inTomoFile = join(self._getTmpPath(tsId), '%s.mrc' % tsId)
+        outTomoFile = join(outPath, '%s.mrc' % tsId)
 
         with mrcfile.open(inTomoFile, mode='r', permissive=True) as mrc:
             rotData = np.rot90(mrc.data)
@@ -119,7 +124,7 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
             tomo.setTsId(ts.getTsId())
             outputTomos.append(tomo)
 
-        self._defineOutputs(outputTomograms=outputTomos)
+        self._defineOutputs(**{outputTomoRecObjects.tomograms.name:outputTomos})
         self._defineSourceRelation(self.inputSetOfTiltSeries, outputTomos)
 
     # --------------------------- INFO functions --------------------------------------------

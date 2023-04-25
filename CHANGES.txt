@@ -1,0 +1,5 @@
+v3.1.1:
+  - Update setup and readme
+  - Code reviewed
+v3.1.0:
+  - First plugin release

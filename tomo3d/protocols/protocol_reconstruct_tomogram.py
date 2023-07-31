@@ -99,7 +99,15 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
             outputStackFn = prefix + '.st'
             outputTltFn = prefix + '.rawtlt'
 
-            ts.applyTransform(outputStackFn)
+            rotationAngle = ts.getAcquisition().getTiltAxisAngle()
+
+            # Check if rotation angle is greater than 45º. If so,
+            # swap x and y dimensions to adapt output image sizes to
+            # the final sample disposition.
+            swapTrue = False
+            if 45 < abs(rotationAngle) < 135:
+                swapTrue = True
+            ts.applyTransform(outputStackFn, swapTrue)
             ts.generateTltFile(outputTltFn)
 
     def reconstructTomogramStep(self, tsId, workingFolder):

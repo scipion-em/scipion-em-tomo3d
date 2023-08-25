@@ -29,8 +29,7 @@ This package contains the protocols and data for tomo3d and related software
 """
 from os.path import join
 import pwem
-from pyworkflow.utils import yellowStr
-from .constants import TOMO3D_HOME, TOMO3D_PKG, PLUGIN_README, TOMO3D_VERSION, TOMO3D_BIN, PLUGIN_URL
+from .constants import TOMO3D_HOME, TOMO3D_PKG, PLUGIN_README, TOMO3D_VERSION, TOMO3D_BIN, PLUGIN_URL, TOMO3D_BIN_URL
 
 __version__ = '3.1.2'
 
@@ -70,22 +69,17 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def defineBinaries(cls, env):
-        # At this point of the installation execution cls.getHome() is None, so the em path should be provided
-        # Only the directory will be generated, because the binaries must be downloaded manually from José
-        # Jesús website, filling a form
-        TOMO3D_INSTALLED = 'readme.txt'
-        msg = 'Binaries must be installed manually. Please follow the instructions described here: ' + PLUGIN_README
-        # installationCmd = 'touch %s &&' % JJSOFT_INSTALLED  # Flag installation finished
-        installationCmd = 'echo %s && ' % yellowStr(msg)
-        installationCmd += 'echo "%s" >> %s' % (msg, TOMO3D_INSTALLED)
+        TOMO3D_INSTALLED = '%s.txt' % TOMO3D_PKG
+        dlZipFile = TOMO3D_PKG + '.zip'
+        installationCmd = 'wget %s -O %s && ' % (TOMO3D_BIN_URL, dlZipFile)
+        installationCmd += 'unzip %s -d %s && ' % (dlZipFile, cls.getHome())
+        installationCmd += 'touch %s' % TOMO3D_INSTALLED  # Flag installation finished
 
         env.addPackage(TOMO3D_PKG,
                        version=TOMO3D_VERSION,
                        tar='void.tgz',
                        commands=[(installationCmd, TOMO3D_INSTALLED)],
-                       neededProgs=["wget", "tar"],
+                       neededProgs=["wget", "tar", "zip"],
                        default=True)
-
-#TODO validateInstallation
 
 

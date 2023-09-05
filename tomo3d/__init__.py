@@ -29,19 +29,18 @@ This package contains the protocols and data for tomo3d and related software
 """
 from os.path import join
 import pwem
-from .constants import TOMO3D_HOME, TOMO3D_PKG, PLUGIN_README, TOMO3D_VERSION, TOMO3D_BIN, PLUGIN_URL, TOMO3D_BIN_URL
-
+from .constants import *
 __version__ = '3.1.2'
 
 
 class Plugin(pwem.Plugin):
-    _homeVar = TOMO3D_HOME
-    _pathVars = [TOMO3D_HOME]
-    _url = PLUGIN_URL
+    _homeVar = TOMO3D_HOME_VAR
+    _pathVars = [TOMO3D_HOME_VAR]
+    _url = 'https://github.com/scipion-em/scipion-em-tomo3d'
 
     @classmethod
     def _defineVariables(cls):
-        cls._defineEmVar(TOMO3D_HOME, TOMO3D_PKG + '-%s' % TOMO3D_VERSION)
+        cls._defineEmVar(TOMO3D_HOME_VAR, TOMO3D_DEFAULT_HOME)
 
     @classmethod
     def getTomoBFlowProgram(cls):
@@ -61,7 +60,7 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def getTomo3dProgram(cls):
-        return join(cls.getHome(), TOMO3D_BIN)
+        return join(cls.getHome(), TOMO3D)
 
     @classmethod
     def getTomoRecProgram(cls):
@@ -69,13 +68,13 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def defineBinaries(cls, env):
-        TOMO3D_INSTALLED = '%s.txt' % TOMO3D_PKG
-        dlZipFile = TOMO3D_PKG + '.zip'
+        TOMO3D_INSTALLED = '%s.txt' % TOMO3D
+        dlZipFile = TOMO3D + '.zip'
         installationCmd = 'wget %s -O %s && ' % (TOMO3D_BIN_URL, dlZipFile)
         installationCmd += 'unzip %s -d %s && ' % (dlZipFile, cls.getHome())
         installationCmd += 'touch %s' % TOMO3D_INSTALLED  # Flag installation finished
 
-        env.addPackage(TOMO3D_PKG,
+        env.addPackage(TOMO3D,
                        version=TOMO3D_VERSION,
                        tar='void.tgz',
                        commands=[(installationCmd, TOMO3D_INSTALLED)],

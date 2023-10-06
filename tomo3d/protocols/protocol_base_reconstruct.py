@@ -47,6 +47,8 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
     Software from: https://sites.google.com/site/3demimageprocessing/
     Returns the set of tomograms
     """
+    _OUTNAME = outputTomoRecObjects.tomograms.name
+    _possibleOutputs = {_OUTNAME: SetOfTomograms}
 
     # --------------------------- DEFINE param functions --------------------------------------------
     def __init__(self, **kwargs):
@@ -124,7 +126,7 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
             tomo.setTsId(ts.getTsId())
             outputTomos.append(tomo)
 
-        self._defineOutputs(**{outputTomoRecObjects.tomograms.name:outputTomos})
+        self._defineOutputs(**{self._OUTNAME:outputTomos})
         self._defineSourceRelation(self.inputSetOfTiltSeries, outputTomos)
 
     # --------------------------- INFO functions --------------------------------------------

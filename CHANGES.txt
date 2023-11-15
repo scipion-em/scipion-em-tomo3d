@@ -1,3 +1,6 @@
+v3.1.2:
+  - The binaries are now directly downloaded. Thanks to José Jesús Fernández <JJ.Fernandez@csic.es>.
+  - Tests fixed
 v3.1.1:
   - Update setup and readme
   - Code reviewed

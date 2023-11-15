@@ -21,26 +21,6 @@ Scipion plugin for Tomo3D
 This plugin allows to use some of the software packages from 3demimageprocessing_ within the Scipion framework.
 **The binaries for the plugin MUST be downloaded manually**:
 
-====================================
-Setup - Binaries manual installation
-====================================
-
-The following binaries are used by tomo3d protocols. All of them can be found in 3demimageprocessing_. These are:
-
-- tomo3d_
-- tomobflow_
-- tomoeed_
-
-To get each of them, click on the corresponding link and fill the form located at the bottom of the displayed webpage.
-Once all of them have been downloaded, place them in scipionDirectory/software/em/tomo3d-VersionNumber.Thus, the final 
-file structure expected by Scipion should look like this, being the listed files below the binaries or a link pointing to each:
-
-scipionDirectory/software/em/tomo3d-VersionNumber
-
-- tomo3d
-- tomobflow
-- tomoeed
-
 ============
 Installation
 ============

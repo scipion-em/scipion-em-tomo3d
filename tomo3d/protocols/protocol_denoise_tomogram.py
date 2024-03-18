@@ -44,7 +44,17 @@ class outputDenoiseObjects(Enum):
 
 class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
     """ Denoises sets of tomograms using methods described in https://sites.google.com/site/3demimageprocessing/
-    Returns the set of denoised tomograms
+    Two methods are available: \n
+    _TomoAND (also known as TomoEED)_ is an optimized program for denoising tomographic volumes with
+    the Anisotropic Nonlinear Diffusion (AND) method, using the EED (Edge-Enhancing Diffusion) mode.
+    This mode manages to reduce noise in the volume with good abilites to preserve and enhance the structures.\n
+    _TomoBflow_: The program TOMOBFLOW (pronounced as tomo-be-flow) is intended for noise filtering with preservation
+     of biologically relevant information. It is an efficient implementation of the Beltrami flow, a nonlinear
+      filtering method that locally tunes the strength of the smoothing according to an edge indicator based
+      on geometry properties. TOMOBFLOW is equipped with the power of diffusion-based filtering methods, with
+      the important advantage that it does not require complicated parameter tuning for successful denoising
+      of datasets. Furthermore, the program has been optimized to reduce the computational demands, specially
+      in terms of memory requirements.
     """
     _label = 'denoise tomogram'
     _devStatus = BETA

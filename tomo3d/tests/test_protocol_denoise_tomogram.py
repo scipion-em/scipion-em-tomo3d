@@ -30,8 +30,7 @@ from os.path import exists
 import numpy as np
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr, removeBaseExt
-from tomo3d.protocols.protocol_denoise_tomogram import ProtJjsoftProtDenoiseTomogram, DENOISE_EED, DENOISE_BF, \
-    outputDenoiseObjects
+from tomo3d.protocols.protocol_denoise_tomogram import ProtJjsoftProtDenoiseTomogram, outputDenoiseObjects
 from tomo.protocols.protocol_import_tomograms import ProtImportTomograms
 
 
@@ -68,29 +67,38 @@ class TestTomogramDenoising(BaseTest):
         # Setting the set of tomograms object
         return pImpTomograms.Tomograms
 
-    def _runDenoising(self, denoisingMethod):
+    def _runDenoising(self, denoisingMethod, niter, timestep):
         # preparing and launching the protocol
-        pDenoiseEED = self.newProtocol(ProtJjsoftProtDenoiseTomogram,
-                                       inputSetTomograms=self.setOfTomograms,
-                                       method=denoisingMethod,
-                                       SigmaGaussian=0.5,
-                                       nIter=1,
-                                       TimeStep=0.1,
-                                       Lambda=-1.0)
-        self.launchProtocol(pDenoiseEED, wait=True)
-        return getattr(pDenoiseEED, outputDenoiseObjects.tomograms.name, None)
+
+        if denoisingMethod == ProtJjsoftProtDenoiseTomogram.DENOISE_EED:
+            pDenoise = self.newProtocol(ProtJjsoftProtDenoiseTomogram,
+                                        inputSetTomograms=self.setOfTomograms,
+                                        method=denoisingMethod,
+                                        SigmaGaussian=0.5,
+                                        nIter=niter,
+                                        TimeStep=timestep)
+        else:
+            pDenoise = self.newProtocol(ProtJjsoftProtDenoiseTomogram,
+                                        inputSetTomograms=self.setOfTomograms,
+                                        method=denoisingMethod,
+                                        nIterBflow=niter,
+                                        TimeStep=timestep,
+                                        SigmaGaussian=0.5)
+
+        self.launchProtocol(pDenoise, wait=True)
+        return getattr(pDenoise, outputDenoiseObjects.tomograms.name, None)
 
     def testDenoisingEED(self):
         print("\n", magentaStr(" Test EED denoising ".center(75, '-')))
         # preparing and launching the protocol
-        setOfEEDDenoisedTomograms = self._runDenoising(DENOISE_EED)
+        setOfEEDDenoisedTomograms = self._runDenoising(ProtJjsoftProtDenoiseTomogram.DENOISE_EED, 10, 0.1)
         # check results
         self._checkResults(setOfEEDDenoisedTomograms)
 
     def testDenoisingBFlow(self):
         print ("\n", magentaStr(" Test BFlow denoising ".center(75, '-')))
         # preparing and launching the protocol
-        setOfEEDDenoisedTomograms = self._runDenoising(DENOISE_BF)
+        setOfEEDDenoisedTomograms = self._runDenoising(ProtJjsoftProtDenoiseTomogram.DENOISE_BF, 50, 0.15)
         # check results
         self._checkResults(setOfEEDDenoisedTomograms)
 

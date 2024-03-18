@@ -33,7 +33,7 @@ from pyworkflow.utils import makePath
 from tomo.protocols import ProtTomoBase
 
 from pwem.protocols import EMProtocol
-from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, BooleanParam
+from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, BooleanParam, LEVEL_ADVANCED
 
 from tomo.objects import Tomogram, SetOfTomograms
 
@@ -64,7 +64,9 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
         form.addSection(label='Input')
         form.addParam('inputSetOfTiltSeries', PointerParam, important=True,
                       pointerClass='SetOfTiltSeries',
-                      label='Tilt Series')
+                      label='Tilt series',
+                      help='Tilt Series to reconstruct the tomograms. Ideally these tilt series'
+                            'should contain alignment information.')
 
     @staticmethod
     def _defineSetShapeParams(form):
@@ -72,25 +74,48 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
                       default=True,
                       label='Set manual tomogram shape',
                       display=EnumParam.DISPLAY_HLIST,
-                      help='By deafault the shape of the tomogram is defined by the tilt series shape')
+                      help='By default the shape of the tomogram is defined by the tilt series shape')
 
         group = form.addGroup('Tomogram shape', condition='setShape')
-        group.addParam('width', IntParam,
-                       default=0,
-                       label='Width',
-                       help='Focus the tomogram in a region of the tilt series')
+
         group.addParam('height', IntParam,
                        default=0,
-                       label='Thickness',
-                       help='Height of the reconstructed tomogram (Default: width of the tomogram)')
-        group.addParam('iniSlice', IntParam,
+                       label='Thickness (px)',
+                       help='By default, the height (i.e. thickness) of the reconstructed tomogram '
+                            ' is equal to the X dimension of the images in the tilt-series. '
+                            ' This option allows the user to properly set the height of the '
+                            ' tomogram to a value that better fits the thickness of the '
+                            ' specimen under study. This also allows reduction of the processing '
+                            ' time. The thickness value has to be an even number. This is '
+                            ' necessary to exploit projection symmetry (see Agulleiro et al. '
+                            ' J.Struct.Biol. 170:570–575, 2010).')
+
+        group.addParam('width', IntParam,
+                       expertLevel=LEVEL_ADVANCED,
                        default=0,
-                       label='Initial slice on Y',
-                       help='Focus reconstruction instead of using default depth')
-        group.addParam('finSlice', IntParam,
-                       default=0,
-                       label='Final slice on Y',
-                       help='Focus reconstruction instead of using default depth')
+                       label='Width (px)',
+                       help='By default, the width of the reconstructed tomogram is equal to '
+                            ' the X dimension of the images in the tilt-series. This option '
+                            ' allows the user to set the width of the tomogram to a smaller '
+                            ' value, which helps to better focus the reconstruction to an area '
+                            ' of interest and further reduce the processing time. Regardless '
+                            ' of the width value, the tomogram is always reconstructed around '
+                            ' the tilt axis (i.e. the centre of the images in the tilt-series).')
+
+        line = group.addLine('Slices in the Y-axis',
+                             expertLevel=LEVEL_ADVANCED,
+                             help=' By default, the output tomogram has as many slices along '
+                                  ' the tilt axis as the Y dimension of the images in the tilt-series. '
+                                  ' This option allows the user to specify the set of slices to be '
+                                  ' reconstructed. Thus, this option helps to better focus the '
+                                  ' reconstruction to an area of interest and further reduce the '
+                                  ' processing time. The user has to specify two values y1,y2 numbered '
+                                  ' from 0 (i.e. in the range [0,Ny-1], with Ny being the Y dimension '
+                                  ' of the images), which represent the indices of the first and last '
+                                  ' slices to be included in the output tomogram.')
+
+        line.addParam('iniSlice', IntParam, default=0, label='Initial')
+        line.addParam('finSlice', IntParam, default=0, label='Final')
 
         form.addParallelSection(threads=4, mpi=0)
 
@@ -135,7 +160,12 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
         return summary
 
     def _validate(self):
-        pass
+        errorMsg = []
+        if self.height.get() % 2 == 1:
+            errorMsg.append('The thickness must be an even number')
+
+        return errorMsg
+
 
     def _methods(self):
         pass

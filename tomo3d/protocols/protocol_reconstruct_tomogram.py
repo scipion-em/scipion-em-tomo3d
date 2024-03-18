@@ -31,7 +31,7 @@ from pyworkflow import BETA
 from pyworkflow.utils import makePath
 
 from tomo3d import Plugin
-from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam
+from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED
 
 import os
 
@@ -43,7 +43,13 @@ SIRT = 1
 class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
     """ Reconstruct tomograms using TOMO3D from
     Software from: https://sites.google.com/site/3demimageprocessing/
-    Returns the set of tomograms
+
+    Tomo3D implements a multithreaded vectorized approach to tomographic reconstruction
+    that takes full advantage of the power in modern multicore computers. Full resolution
+    tomograms are generated at high speed on standard computers with no special system
+    requirements. Tomo3D has the most common reconstruction methods implemented,
+    namely WBP and SIRT. It proves to be competitive with current GPU solutions in terms
+    of processing time, in the order of a few seconds with WBP or minutes with SIRT.
     """
     _label = 'reconstruct tomogram'
     _devStatus = BETA
@@ -54,16 +60,35 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
         form.addParam('method', EnumParam,
                       choices=['WBP (Fast)', 'SIRT (Slow)'], default=WBP,
                       label='Reconstruction method',
-                      help='Reconstrution method to use')
+                      help='Reconstrution method to use:\n'
+                           '_WBP_: Also called filtered back projection provides an exact'
+                           'solution for the reconstruction problem. Unfortunately, the '
+                           'contrast of the reconstructed tomogram is poor. This solution should'
+                           'be chosen for subtomogram averaging approaches\n'
+                           '_SIRT_: It is an algebraic iterative algorithm that aims to maximize'
+                           'the compabitity between the images and the reconstructed tomogram. This'
+                           'solution is more suitable for celullar environment, but not for '
+                           'subtomogram averaging')
         form.addParam('nIterations', IntParam, default=30,
                       condition='method==%i' % SIRT,
                       label='Number of Iterations (SIRT)',
                       help='Number of Iterations used in the SIRT method')
-        form.addParam('Hamming', FloatParam, default=0.0,
-                      label='Hamming filter frequency',
-                      help='Frequency for the Hamming atenuation filter [0,0.5]. \n0 always uses the filter, '
-                           '0.5 turns it off')
         self._defineSetShapeParams(form)
+        form.addParam('Hamming', FloatParam, default=0.0,
+                      condition='method==%i' % WBP,
+                      expertLevel=LEVEL_ADVANCED,
+                      label='Hamming filter frequency',
+                      help=' By default, in WBP the program applies a Ramp filter together '
+                           ' with a Hamming filter. The latter allows attenuation of the '
+                           ' high frequency components, which are typically very noisy. '
+                           ' This parameter allows setting up the starting frequency from '
+                           ' which the Hamming filter is to be applied. The values '
+                           ' must range in [0,0.5], where 0.5 represents the Nyquist frequency.'
+                           ' By default, the program uses a starting frequency of 0, i.e. a '
+                           ' Hamming is applied over the whole frequency range. A value of 0.5 '
+                           ' would turn off the Hamming filter. Values in-between would '
+                           ' preserve low-frequency components and modulate the contribution '
+                           ' of the other frequency components')
         form.addParallelSection(threads=4, mpi=0)
 
     # --------------------------- INSERT steps functions --------------------------------------------

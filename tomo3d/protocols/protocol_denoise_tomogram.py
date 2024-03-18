@@ -72,7 +72,7 @@ class ProtJjsoftProtDenoiseTomogram(EMProtocol, ProtTomoBase):
         form.addSection(label='Input')
         form.addParam('inputSetTomograms', PointerParam, pointerClass='SetOfTomograms',
                       label='Set Of Tomograms',
-                      help='Select one set of tomograms')
+                      help='Set of tomograms that will be denoised.')
         form.addParam('method', EnumParam,
                       choices=['Edge Enhancing Diffusion (EED)', 'BFlow'],
                       default=self.DENOISE_EED,

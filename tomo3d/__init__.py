@@ -30,7 +30,7 @@ This package contains the protocols and data for tomo3d and related software
 from os.path import join
 import pwem
 from .constants import *
-__version__ = '3.1.2'
+__version__ = '3.1.3'
 
 
 class Plugin(pwem.Plugin):

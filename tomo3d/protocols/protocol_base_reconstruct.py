@@ -74,9 +74,10 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
                       default=True,
                       label='Set manual tomogram shape',
                       display=EnumParam.DISPLAY_HLIST,
-                      help='By default the shape of the tomogram is defined by the tilt series shape')
+                      help='By default the shape of the tomogram is defined by the tilt series shape,'
+                           'but the user can manually set it here')
 
-        group = form.addGroup('Tomogram shape', condition='setShape')
+        group = form.addGroup('Tomogram dimensions', condition='setShape')
 
         group.addParam('height', IntParam,
                        default=0,

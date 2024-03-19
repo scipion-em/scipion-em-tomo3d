@@ -72,7 +72,8 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
         form.addParam('nIterations', IntParam, default=30,
                       condition='method==%i' % SIRT,
                       label='Number of Iterations (SIRT)',
-                      help='Number of Iterations used in the SIRT method')
+                      help='It sets the number of iterations for SIRT. By default,'
+                           ' a number of 30 iterations is used.')
         self._defineSetShapeParams(form)
         form.addParam('Hamming', FloatParam, default=0.0,
                       condition='method==%i' % WBP,

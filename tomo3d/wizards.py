@@ -29,14 +29,13 @@ This module implement some wizards
 """
 from pyworkflow.wizard import Wizard
 from .protocols import ProtJjsoftProtDenoiseTomogram
-from .protocols.protocol_denoise_tomogram import DENOISE_EED
 
 
 class Tomo3dDenoiseIterationsWizard(Wizard):
     _targets = [(ProtJjsoftProtDenoiseTomogram, ['nIter'])]
 
     def _getNiter(self, protocol):
-        if protocol.method.get() == DENOISE_EED:
+        if protocol.method.get() == ProtJjsoftProtDenoiseTomogram.DENOISE_EED:
             nIter = 10
         else:  # BFlow
             nIter = 70

@@ -29,7 +29,7 @@ from tomo3d.protocols.protocol_base_reconstruct import ProtBaseReconstruct
 from pyworkflow import BETA
 from pyworkflow.utils import makePath
 from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatParam, LEVEL_ADVANCED, BooleanParam
-from imod.utils import formatTransformFile
+from imod.utils import genXfFile
 
 # Motion modelling labels
 POLYNOMIAL = 0
@@ -128,7 +128,7 @@ class ProtJjsoftAlignReconstructTomogram(ProtBaseReconstruct):
             makePath(workingFolder)
             # Tilt series convert
             if ts.getFirstItem().hasTransform():
-                formatTransformFile(ts, self.getImodXfFile(workingFolder, tsId))
+                genXfFile(ts, self.getImodXfFile(workingFolder, tsId))
             ts.generateTltFile(self.getAnglesFile(workingFolder, tsId))
             # Fiducials convert
             imodFiducial = self.getImodTxtFiducialsFile(workingFolder, tsId)

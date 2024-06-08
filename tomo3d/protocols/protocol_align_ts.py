@@ -36,7 +36,7 @@ import imod.utils as utils
 import os
 from tomo.convert import writeTiStack
 import tomo.objects as tomoObj
-from imod.utils import formatTransformFile
+from imod.utils import genXfFile
 
 
 class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
@@ -101,7 +101,7 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
 
             # Creates the tltxf file
             if ts.getFirstItem().hasTransform():
-                formatTransformFile(ts, prefix + '.tltxf')
+                genXfFile(ts, prefix + '.tltxf')
 
             # Creates the prexg file as a identity matrix
             self.write_prexg_identity(ts, prefix + '.prexg')

@@ -28,6 +28,8 @@ from os.path import join
 
 import mrcfile
 import numpy as np
+
+from pyworkflow.object import Set
 from pyworkflow.utils import makePath
 
 from tomo.protocols import ProtTomoBase
@@ -53,7 +55,7 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
     # --------------------------- DEFINE param functions --------------------------------------------
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.outputFiles = []
+        self.tsDict = None
 
     def _defineParams(self, form):
         pass
@@ -73,7 +75,7 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
         form.addParam('setShape', BooleanParam,
                       default=True,
                       label='Set manual tomogram shape',
-                      display=EnumParam.DISPLAY_HLIST,
+                      display=BooleanParam,
                       help='By default the shape of the tomogram is defined by the tilt series shape,'
                            'but the user can manually set it here')
 
@@ -127,10 +129,8 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
     def rotXTomo(self, tsId):
         """Result of the reconstruction must be rotated 90 degrees around the X
         axis to recover the original orientation (due to jjsoft design)"""
-        outPath = self._getExtraPath(tsId)
-        makePath(outPath)
-        inTomoFile = join(self._getTmpPath(tsId), '%s.mrc' % tsId)
-        outTomoFile = join(outPath, '%s.mrc' % tsId)
+        inTomoFile = self._getTmpTomoOutFName(tsId)
+        outTomoFile = self._getTomoOutFName(tsId)
 
         with mrcfile.open(inTomoFile, mode='r', permissive=True) as mrc:
             rotData = np.rot90(mrc.data)
@@ -138,22 +138,20 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
         with mrcfile.open(outTomoFile, mode='w+') as mrc:
             mrc.set_data(rotData)
 
-        return outTomoFile
-
-    def createOutputStep(self):
-        outputTomos = self._createSetOfTomograms()
-        outputTomos.copyInfo(self.inputSetOfTiltSeries.get())
-
-        for tomoPath, ts in zip(self.outputFiles, self.inputSetOfTiltSeries.get()):
-            tomo = Tomogram()
-            tomo.setLocation(tomoPath)
-            tomo.setSamplingRate(ts.getSamplingRate())
-            tomo.setOrigin()
-            tomo.setTsId(ts.getTsId())
-            outputTomos.append(tomo)
-
-        self._defineOutputs(**{self._OUTNAME:outputTomos})
-        self._defineSourceRelation(self.inputSetOfTiltSeries, outputTomos)
+    def createOutputStep(self, tsId):
+        ts = self.tsDict[tsId]
+        acq = ts.getAcquisition().clone()
+        outputTomos = self._getOutputSetOfTomograms()
+        tomo = Tomogram()
+        tomo.setTsId(ts.getTsId())
+        tomo.setLocation(self._getTomoOutFName(tsId))
+        tomo.setSamplingRate(ts.getSamplingRate())
+        tomo.setAcquisition(acq)
+        tomo.setOrigin()
+        outputTomos.append(tomo)
+        outputTomos.update(tomo)
+        outputTomos.write()
+        self._store(outputTomos)
 
     # --------------------------- INFO functions --------------------------------------------
     def _summary(self):
@@ -185,5 +183,33 @@ class ProtBaseReconstruct(EMProtocol, ProtTomoBase):
 
     def getWorkingDirName(self, tsId):
         return self._getTmpPath(tsId)
+
+    def _getOutputSetOfTomograms(self):
+        outTomograms =  getattr(self, outputTomoRecObjects.tomograms.name, None)
+        if outTomograms:
+            outTomograms.enableAppend()
+            tomograms = outTomograms
+        else:
+            inTsSet = self.inputSetOfTiltSeries.get()
+            tomograms = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
+            tomograms.copyInfo(inTsSet)
+            tomograms.setStreamState(Set.STREAM_OPEN)
+            setattr(self, outputTomoRecObjects.tomograms.name, tomograms)
+            self._defineOutputs(**{self._OUTNAME: tomograms})
+            self._defineSourceRelation(inTsSet, tomograms)
+
+        return tomograms
+
+    def _getTomoOutFName(self, tsId):
+        return join(self._getTsExtraDir(tsId), '%s.mrc' % tsId)
+
+    def _getTmpTomoOutFName(self, tsId):
+        return join(self._getTsTmpDir(tsId), '%s.mrc' % tsId)
+
+    def _getTsTmpDir(self, tsId):
+        return self._getTmpPath(tsId)
+
+    def _getTsExtraDir(self, tsId):
+        return self._getExtraPath(tsId)
 
 

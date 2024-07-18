@@ -23,24 +23,22 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from collections import namedtuple
 from os.path import join
 
-
+from pyworkflow.object import Set
 from tomo3d.protocols.protocol_base_reconstruct import ProtBaseReconstruct
 from pyworkflow import BETA
 from pyworkflow.utils import makePath
-
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED
-
-import os
 
 # Reconstruction methods
 WBP = 0
 SIRT = 1
 
 
-class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
+class ProtTomo3dReconstrucTomo(ProtBaseReconstruct):
     """ Reconstruct tomograms using TOMO3D from
     Software from: https://sites.google.com/site/3demimageprocessing/
 
@@ -53,6 +51,9 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
     """
     _label = 'reconstruct tomogram'
     _devStatus = BETA
+
+    def __init__(self, **args):
+        super().__init__(**args)
 
     # --------------------------- DEFINE param functions --------------------------------------------
     def _defineParams(self, form):
@@ -94,52 +95,35 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
 
     # --------------------------- INSERT steps functions --------------------------------------------
     def _insertAllSteps(self):
-        """ Insert every step of the protocol"""
-        self._insertFunctionStep(self.convertInputStep)
-
-        for ts in self.inputSetOfTiltSeries.get():
-
-            tsId = ts.getTsId()
-            workingFolder = self.getWorkingDirName(tsId)
-            self._insertFunctionStep(self.reconstructTomogramStep, tsId, workingFolder)
-
-        self._insertFunctionStep(self.createOutputStep)
+        self._initialize()
+        for tsId in self.tsDict.keys():
+            self._insertFunctionStep(self.convertInputStep, tsId)
+            self._insertFunctionStep(self.reconstructTomogramStep, tsId)
+            self._insertFunctionStep(self.createOutputStep, tsId)
+        self._insertFunctionStep(self.closeOutputSetsStep)
 
     # --------------------------- STEPS functions --------------------------------------------
-    def convertInputStep(self):
-        for ts in self.inputSetOfTiltSeries.get():
+    def _initialize(self):
+        self.tsDict = {ts.getTsId(): ts.clone(ignoreAttrs=[]) for ts in self.inputSetOfTiltSeries.get()}
 
-            excludedViewsCount = len(ts.getExcludedViewsIndex())
+    def convertInputStep(self, tsId):
+        workingTmpFolder = self._getTsTmpDir(tsId)
+        makePath(workingTmpFolder, self._getTsExtraDir(tsId))
+        outputStackFn, outputTltFn = self.getTsFiles(workingTmpFolder, tsId)
+        ts = self.tsDict[tsId]
+        rotationAngle = ts.getAcquisition().getTiltAxisAngle()
+        # Check if rotation angle is greater than 45º. If so,
+        # swap x and y dimensions to adapt output image sizes to
+        # the final sample disposition.
+        swapXY = False
+        if 45 < abs(rotationAngle) < 135:
+            swapXY = True
+        ts.applyTransform(outputStackFn, swapXY=swapXY, excludeViews=True)
+        ts.generateTltFile(outputTltFn, excludeViews=True)
 
-            if excludedViewsCount > 0:
-                msg = "Invalid input: Tomo 3d does not work with excluded views and Tilt series %s has %d " \
-                      "Try to remove them with imod exclude views protocol. Stopping now." % (ts.getTsId(), excludedViewsCount)
-                self.warning(msg)
-                raise AttributeError(msg)
-
-            tsId = ts.getTsId()
-            workingFolder = self.getWorkingDirName(tsId)
-            prefix = os.path.join(workingFolder, tsId)
-            makePath(workingFolder)
-
-            outputStackFn = prefix + '.st'
-            outputTltFn = prefix + '.rawtlt'
-
-            rotationAngle = ts.getAcquisition().getTiltAxisAngle()
-
-            # Check if rotation angle is greater than 45º. If so,
-            # swap x and y dimensions to adapt output image sizes to
-            # the final sample disposition.
-            swapTrue = False
-            if 45 < abs(rotationAngle) < 135:
-                swapTrue = True
-            ts.applyTransform(outputStackFn, swapTrue)
-            ts.generateTltFile(outputTltFn)
-
-    def reconstructTomogramStep(self, tsId, workingFolder):
-        # We start preparing writing those elements we're using as input to keep them untouched
-        TsPath, AnglesPath = self.getTsFiles(workingFolder, tsId)
-        outTomoPath = join(workingFolder, '%s.mrc' % tsId)
+    def reconstructTomogramStep(self, tsId):
+        TsPath, AnglesPath = self.getTsFiles(self._getTsTmpDir(tsId), tsId)
+        outTomoPath = self._getTmpTomoOutFName(tsId)
         params = ''
         if self.method.get() == SIRT:
             params += ' -S -l %i ' % self.nIterations.get()
@@ -154,19 +138,15 @@ class ProtJjsoftReconstructTomogram(ProtBaseReconstruct):
         args = '-i {} -a {} -o {} -t {}'.format(TsPath, AnglesPath, outTomoPath, self.numberOfThreads)
         args += params
         self.runJob(Plugin.getTomo3dProgram(), args)
-        out_tomo_rx_path = self.rotXTomo(tsId)
-        self.outputFiles.append(out_tomo_rx_path)
+        self.rotXTomo(tsId)
+
+    def closeOutputSetsStep(self):
+        self._closeOutputSet()
 
     # --------------------------- INFO functions --------------------------------------------
     def _summary(self):
         summary = []
         return summary
-
-    def _validate(self):
-        pass
-
-    def _methods(self):
-        pass
 
     def _citations(self):
         return ['Fernandez2010_tomo3d', 'Fernandez2015_tomo3d']

@@ -129,6 +129,10 @@ class TestTomogramRec(TestBaseCentralizedLayer):
     bin4 = 4
     bin4SRate = DataSetRe4STATuto.unbinnedPixSize.value * 4
     tomoDimsThk300 = [960, 928, 300]
+    excludedViewsDict = {
+        TS_03: [0, 1, 2, 38, 39],
+        TS_54: [0, 1, 38, 39, 40]
+    }
 
     @classmethod
     def setUpClass(cls):
@@ -185,24 +189,29 @@ class TestTomogramRec(TestBaseCentralizedLayer):
         return outTsSet
 
     @classmethod
-    def _runExcludeViews(cls, inTsSet=None):
-        print(magentaStr("\n==> Excluding some views with IMOD:"))
-        excViewsFileName = join('/tmp', 'excViews.txt')
-        with open(excViewsFileName, mode='w') as eFile:
-            eFile.write(f"{TS_03} 1-3,39,40\n"
-                        f"{TS_54} 1,2,39-41")
-        excViewsProt = cls.newProtocol(ProtImodExcludeViews,
-                                       inputSetOfTiltSeries=inTsSet,
-                                       excludeViewsFile=excViewsFileName)
-        cls.launchProtocol(excViewsProt)
-        outTsSet = getattr(excViewsProt, OUTPUT_TILTSERIES_NAME, None)
-        return outTsSet
+    def _excludeTsSetViews(cls, tsSet):
+        tsList = [ts.clone(ignoreAttrs=[]) for ts in tsSet]
+        for ts in tsList:
+            cls._excludeTsViews(tsSet, ts, cls.excludedViewsDict[ts.getTsId()])
+
+    @staticmethod
+    def _excludeTsViews(tsSet, ts, excludedViewsList):
+        tiList = [ti.clone() for ti in ts]
+        for i, ti in enumerate(tiList):
+            if i in excludedViewsList:
+                ti._objEnabled = False
+                ts.update(ti)
+        ts.write()
+        tsSet.update(ts)
+        tsSet.write()
 
     @classmethod
     def _runTomoRec(cls, inTsSet=None, recMethod=None, excludedViews=False):
         method = 'WBP' if recMethod is WBP else 'SIRT'
         excViewsMsg = 'with excViews' if excludedViews else ''
         print(magentaStr(f"\n==> Reconstructing the tomograms using the method {method} {excViewsMsg}:"))
+        if excludedViews:
+            cls._excludeTsSetViews(inTsSet)
         protTomoRec = cls.newProtocol(ProtTomo3dReconstrucTomo,
                                       inputSetOfTiltSeries=inTsSet,
                                       method=recMethod,
@@ -219,12 +228,15 @@ class TestTomogramRec(TestBaseCentralizedLayer):
         self._checkTomos(recTomos)
 
     def testRecWbpExcludedViews(self):
-        tsSetWithExcViews = self._runExcludeViews(inTsSet=self.tsWithAliBin4)
-        recTomos = self._runTomoRec(recMethod=WBP, inTsSet=tsSetWithExcViews, excludedViews=True)
+        recTomos = self._runTomoRec(recMethod=WBP, inTsSet=self.tsWithAliBin4, excludedViews=True)
         self._checkTomos(recTomos)
 
     def testRecSirt(self):
         recTomos = self._runTomoRec(recMethod=SIRT, inTsSet=self.tsWithAliBin4)
+        self._checkTomos(recTomos)
+
+    def testRecSirtExcludedViews(self):
+        recTomos = self._runTomoRec(recMethod=SIRT, inTsSet=self.tsWithAliBin4, excludedViews=True)
         self._checkTomos(recTomos)
 
     def _checkTomos(self, inTomoSet):
@@ -232,3 +244,4 @@ class TestTomogramRec(TestBaseCentralizedLayer):
                             expectedSetSize=self.nTomos,
                             expectedSRate=self.bin4SRate,
                             expectedDimensions=self.tomoDimsThk300)
+

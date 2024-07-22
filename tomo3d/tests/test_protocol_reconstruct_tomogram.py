@@ -26,100 +26,18 @@ import tempfile
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-import numpy as np
-from os.path import exists, join
-
 from imod.constants import OUTPUT_TILTSERIES_NAME
-from imod.protocols import ProtImodImportTransformationMatrix, ProtImodTsNormalization, ProtImodExcludeViews
-from pyworkflow.tests import BaseTest, setupTestProject, DataSet
+from imod.protocols import ProtImodImportTransformationMatrix, ProtImodTsNormalization
+from pyworkflow.tests import setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from tomo.tests import RE4_STA_TUTO, DataSetRe4STATuto
 from tomo.tests.test_base_centralized_layer import TestBaseCentralizedLayer
-from tomo3d.protocols.protocol_base_reconstruct import outputTomoRecObjects
+from tomo3d.protocols.protocol_base import outputTomo3dObjects
 from tomo3d.protocols.protocol_reconstruct_tomogram import ProtTomo3dReconstrucTomo, WBP, SIRT
 from tomo.protocols.protocol_ts_import import ProtImportTs
 
 TS_03 = 'TS_03'
 TS_54 = 'TS_54'
-
-
-class TestTomogramReconstruction(BaseTest):
-    jjsoftDataTest = None
-    getFile = None
-    samplingRate = 1.35
-
-    @classmethod
-    def setUpClass(cls):
-        """Prepare the data that we will use later on."""
-        setupTestProject(cls)  # defined in BaseTest, creates cls.proj
-        cls.jjsoftDataTest = DataSet.getDataSet('tomo-em')
-        cls.getFile = cls.jjsoftDataTest.getFile('etomo')
-        cls.setOfTs = cls._runImportTiltSeries()
-
-    @classmethod
-    def _runImportTiltSeries(cls):
-        protImport = cls.newProtocol(
-            ProtImportTs,
-            filesPath=cls.getFile,
-            filesPattern='BB{TS}.st',
-            minAngle=-55,
-            maxAngle=65,
-            stepAngle=2,
-            voltage=300,
-            magnification=105000,
-            sphericalAberration=2.7,
-            amplitudeContrast=0.1,
-            samplingRate=cls.samplingRate,
-            doseInitial=0,
-            dosePerFrame=0.3,
-            tiltAxisAngle=90)
-        cls.launchProtocol(protImport, wait=True)
-        return protImport.outputTiltSeries
-
-    def testReconstructionWBP(self):
-        print("\n", magentaStr(" Test tomo3D reconstruction with WBP".center(75, '-')))
-
-        # preparing and launching the protocol
-        ptomo3D = self.newProtocol(ProtTomo3dReconstrucTomo,
-                                   inputSetOfTiltSeries=self.setOfTs,
-                                   method=0)
-        self.launchProtocol(ptomo3D, wait=True)
-        setOfReconstructedTomograms = getattr(ptomo3D, outputTomoRecObjects.tomograms.name, None)
-
-        # check results
-        self._checkResults(setOfReconstructedTomograms)
-
-    def testReconstructionSIRT(self):
-        print("\n", magentaStr(" Test tomo3D reconstruction with SIRT".center(75, '-')))
-
-        # preparing and launching the protocol
-        ptomo3D = self.newProtocol(ProtTomo3dReconstrucTomo,
-                                   inputSetOfTiltSeries=self.setOfTs,
-                                   method=1,
-                                   nIterations=1)
-        self.launchProtocol(ptomo3D, wait=True)
-        setOfReconstructedTomograms = getattr(ptomo3D, outputTomoRecObjects.tomograms.name, None)
-
-        # check results
-        self._checkResults(setOfReconstructedTomograms)
-
-    def _checkResults(self, outputSet):
-        # Set of tomograms checks
-        self.assertIsNotNone(outputSet, "There was some problem with the output")
-        self.assertEqual(outputSet.getSize(), self.setOfTs.getSize(), "The number of the denoised tomograms is wrong")
-        self.assertEqual(outputSet.getSamplingRate(), self.samplingRate)
-        # Tomograms checks
-        testTsIds = ['b', 'a']
-        testOrigin = np.array([
-            [1.0, 0.0, 0.0, -345.6],
-            [0.0, 1.0, 0.0, -345.6],
-            [0.0, 0.0, 1.0, -345.6],
-            [0.0, 0.0, 0.0, 1.0]])
-        for i, tomo in enumerate(outputSet):
-            self.assertTrue(exists(tomo.getFileName()))
-            self.assertEqual(tomo.getTsId(), testTsIds[i])
-            self.assertEqual(tomo.getSamplingRate(), self.samplingRate)
-            self.assertTrue(np.allclose(tomo.getOrigin(force=True).getMatrix(), testOrigin, rtol=1e-2))
 
 
 class TestTomogramRec(TestBaseCentralizedLayer):
@@ -220,7 +138,7 @@ class TestTomogramRec(TestBaseCentralizedLayer):
                                       numberOfThreads=8)
         protTomoRec.setObjLabel(f'Tomo rec {method} {excViewsMsg}')
         cls.launchProtocol(protTomoRec)
-        outTomos = getattr(protTomoRec, outputTomoRecObjects.tomograms.name, None)
+        outTomos = getattr(protTomoRec, outputTomo3dObjects.tomograms.name, None)
         return outTomos
 
     def testRecWbp(self):

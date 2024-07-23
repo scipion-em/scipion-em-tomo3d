@@ -1,6 +1,11 @@
 v3.1.3:
+ User:
   - Revision and improvement of the help and description of protocols (Thanks J. L. Vilas!).
-  - Protocol validations improved
+  - Tomogram reconstruction: excluded views management added.
+ Devel:
+  - Protocols validations improved.
+  - Protocols for tomogram reconstruction and tomogram denoising refactored and semi-streamified.
+  - New tests added using the TCL.
 v3.1.2:
   - The binaries are now directly downloaded. Thanks to José Jesús Fernández <JJ.Fernandez@csic.es>.
   - Tests fixed
@@ -9,3 +14,7 @@ v3.1.1:
   - Code reviewed
 v3.1.0:
   - First plugin release
+
+
+tomo rec protocol refactored. Tests based on the TCL added. Excluded …
+…views management introduced. SemiStreamified

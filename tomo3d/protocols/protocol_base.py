@@ -32,6 +32,10 @@ from tomo.protocols import ProtTomoBase
 from pwem.protocols import EMProtocol
 from tomo.objects import Tomogram, SetOfTomograms
 
+# Odd/even
+EVEN = 'even'
+ODD = 'odd'
+
 
 class outputTomo3dObjects(Enum):
     tomograms = SetOfTomograms
@@ -57,16 +61,17 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
     def _insertAllSteps(self):
         pass
 
-    def rotXTomo(self, tsId):
+    def rotXTomo(self, tsId, suffix=None):
         """Result of the reconstruction must be rotated 90 degrees around the X
-        axis to recover the original orientation (due to jjsoft design)"""
-        inTomoFile = self._getTmpTomoOutFName(tsId)
-        outTomoFile = self._getOutTomoFile(tsId)
+        axis to recover the original orientation (due to tomo3d design)"""
 
-        with mrcfile.open(inTomoFile, mode='r', permissive=True) as mrc:
+        inTomoFile = self._getTmpTomoOutFName(tsId, suffix=suffix)
+        outTomoFile = self._getOutTomoFile(tsId, suffix=suffix)
+
+        with mrcfile.mmap(inTomoFile, mode='r', permissive=True) as mrc:
             rotData = np.rot90(mrc.data)
 
-        with mrcfile.open(outTomoFile, mode='w+') as mrc:
+        with mrcfile.mmap(outTomoFile, mode='w+') as mrc:
             mrc.set_data(rotData)
 
     def createOutputStep(self, tsId):
@@ -79,6 +84,8 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
         tomo.setSamplingRate(obj.getSamplingRate())
         tomo.setAcquisition(acq)
         tomo.setOrigin()
+        if self.recEvenOdd.get():
+            tomo.setHalfMaps([self._getOutTomoFile(tsId, suffix=EVEN), self._getOutTomoFile(tsId, suffix=ODD)])
         outputTomos.append(tomo)
         outputTomos.update(tomo)
         outputTomos.write()
@@ -118,11 +125,15 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
 
         return tomograms
 
-    def _getOutTomoFile(self, tsId):
-        return join(self._getTsExtraDir(tsId), '%s.mrc' % tsId)
+    def _getOutTomoFile(self, tsId, suffix=None):
+        return join(self._getTsExtraDir(tsId), f'{tsId}{self._manageSuffix(suffix)}.mrc')
 
-    def _getTmpTomoOutFName(self, tsId):
-        return join(self._getTsTmpDir(tsId), '%s.mrc' % tsId)
+    def _getTmpTomoOutFName(self, tsId, suffix=None):
+        return join(self._getTsTmpDir(tsId), f'{tsId}{self._manageSuffix(suffix)}.mrc')
+
+    @staticmethod
+    def _manageSuffix(suffix):
+        return f'_{suffix}' if suffix else ''
 
     def _getTsTmpDir(self, tsId):
         return self._getTmpPath(tsId)

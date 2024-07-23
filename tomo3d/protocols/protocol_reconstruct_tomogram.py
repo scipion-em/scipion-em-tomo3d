@@ -24,7 +24,7 @@
 # *
 # **************************************************************************
 import logging
-from tomo3d.protocols.protocol_base import ProtBaseTomo3d
+from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD
 from pyworkflow.utils import makePath
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED, BooleanParam, PointerParam
@@ -186,33 +186,32 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         ts.generateTltFile(outputTltFn, excludeViews=True)
 
     def reconstructTomogramStep(self, tsId):
-        TsPath, AnglesPath = self.getTsFiles(self._getTsTmpDir(tsId), tsId)
         params = ''
         if self.method.get() == SIRT:
-            params += ' -S -l %i ' % self.nIterations.get()
+            params += f' -S -l {self.nIterations.get()}'
         if self.setShape.get():
             if self.width.get() != 0:
-                params += ' -x {}'.format(self.width.get())
+                params += f' -x {self.width.get()}'
             if self.finSlice.get() != 0:
-                params += ' -y {},{}'.format(self.iniSlice.get(), self.finSlice.get())
+                params += f' -y {self.iniSlice.get()},{self.finSlice.get()}'
             if self.height.get() != 0:
-                params += ' -z {}'.format(self.height.get())
-
-        args = '-i {} -a {} -t {}'.format(TsPath, AnglesPath, self.numberOfThreads)
-        args += params
+                params += f' -z {self.height.get()}'
 
         msg = f'{tsId}: Reconstructing the tomogram'
-        filesToRecDict = {self._getTmpTomoOutFName(tsId): msg}
+        tsPath, anglesPath = self.getTsFiles(self._getTsTmpDir(tsId), tsId)
+        tomoRecInfoDict = {'': tsPath}  # {suffix: fileName}
         ts = self.objDict[tsId]
         if self.recEvenOdd.get():
-            filesToRecDict[ts.getEvenFileName()] = f'{msg} EVEN'
-            filesToRecDict[ts.getOddFileName()] = f'{msg} ODD'
+            tomoRecInfoDict[EVEN] = ts.getEvenFileName()
+            tomoRecInfoDict[ODD] = ts.getOddFileName()
 
-        for fileName, recMsg in filesToRecDict.items():
-            logger.info(recMsg)
-            args += f' -o {fileName}'
+        for suffix, inFile in tomoRecInfoDict.items():
+            logger.info(f'{msg} {suffix}')
+            outFile = self._getTmpTomoOutFName(tsId, suffix=suffix)
+            args = f'-i {inFile} -a {anglesPath} -o {outFile} -t {self.numberOfThreads}'
+            args += params
             self.runJob(Plugin.getTomo3dProgram(), args)
-        # self.rotXTomo(tsId)
+            self.rotXTomo(tsId, suffix=suffix)
 
     # --------------------------- INFO functions --------------------------------------------
     def _validate(self):

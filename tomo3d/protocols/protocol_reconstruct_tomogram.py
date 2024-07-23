@@ -23,10 +23,12 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from tomo3d.protocols.protocol_base import ProtBaseTomo3d
+import logging
+from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD
 from pyworkflow.utils import makePath
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED, BooleanParam, PointerParam
+logger = logging.getLogger(__name__)
 
 # Reconstruction methods
 WBP = 0
@@ -91,11 +93,15 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
     def _defineInputParams(form):
         # First we customize the inputParticles param to fit our needs in this protocol
         form.addSection(label='Input')
-        form.addParam('inputSetOfTiltSeries', PointerParam, important=True,
+        form.addParam('inputSetOfTiltSeries', PointerParam,
+                      important=True,
                       pointerClass='SetOfTiltSeries',
                       label='Tilt series',
                       help='Tilt Series to reconstruct the tomograms. Ideally these tilt series'
                             'should contain alignment information.')
+        form.addParam('recEvenOdd', BooleanParam,
+                      label='Reconstruct the even/odd tomograms?',
+                      default=False)
 
     @staticmethod
     def _defineSetShapeParams(form):
@@ -180,25 +186,44 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         ts.generateTltFile(outputTltFn, excludeViews=True)
 
     def reconstructTomogramStep(self, tsId):
-        TsPath, AnglesPath = self.getTsFiles(self._getTsTmpDir(tsId), tsId)
-        outTomoPath = self._getTmpTomoOutFName(tsId)
         params = ''
         if self.method.get() == SIRT:
-            params += ' -S -l %i ' % self.nIterations.get()
+            params += f' -S -l {self.nIterations.get()}'
         if self.setShape.get():
             if self.width.get() != 0:
-                params += ' -x {}'.format(self.width.get())
+                params += f' -x {self.width.get()}'
             if self.finSlice.get() != 0:
-                params += ' -y {},{}'.format(self.iniSlice.get(), self.finSlice.get())
+                params += f' -y {self.iniSlice.get()},{self.finSlice.get()}'
             if self.height.get() != 0:
-                params += ' -z {}'.format(self.height.get())
+                params += f' -z {self.height.get()}'
 
-        args = '-i {} -a {} -o {} -t {}'.format(TsPath, AnglesPath, outTomoPath, self.numberOfThreads)
-        args += params
-        self.runJob(Plugin.getTomo3dProgram(), args)
-        self.rotXTomo(tsId)
+        msg = f'{tsId}: Reconstructing the tomogram'
+        tsPath, anglesPath = self.getTsFiles(self._getTsTmpDir(tsId), tsId)
+        tomoRecInfoDict = {'': tsPath}  # {suffix: fileName}
+        ts = self.objDict[tsId]
+        if self.recEvenOdd.get():
+            tomoRecInfoDict[EVEN] = ts.getEvenFileName()
+            tomoRecInfoDict[ODD] = ts.getOddFileName()
+
+        for suffix, inFile in tomoRecInfoDict.items():
+            logger.info(f'{msg} {suffix}')
+            outFile = self._getTmpTomoOutFName(tsId, suffix=suffix)
+            args = f'-i {inFile} -a {anglesPath} -o {outFile} -t {self.numberOfThreads}'
+            args += params
+            self.runJob(Plugin.getTomo3dProgram(), args)
+            self.rotXTomo(tsId, suffix=suffix)
 
     # --------------------------- INFO functions --------------------------------------------
+    def _validate(self):
+        errorMsg = []
+        if self.height.get() % 2 == 1:
+            errorMsg.append('The thickness must be an even number')
+        if self.recEvenOdd.get() and not self.inputSetOfTiltSeries.get().hasOddEven():
+            errorMsg.append('The even/odd tomograms cannot be reconstructed as no even/odd tilt-series are found '
+                            'in the metadata of the introduced tilt-series.')
+
+        return errorMsg
+
     def _summary(self):
         summary = []
         return summary

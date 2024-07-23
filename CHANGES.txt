@@ -1,7 +1,9 @@
 v3.1.3:
  User:
   - Revision and improvement of the help and description of protocols (Thanks J. L. Vilas!).
-  - Tomogram reconstruction: excluded views management added.
+  - Tomogram reconstruction:
+     * Excluded views management added.
+     * Even/Odd management added.
  Devel:
   - Protocols validations improved.
   - Protocols for tomogram reconstruction and tomogram denoising refactored and semi-streamified.

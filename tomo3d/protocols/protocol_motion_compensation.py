@@ -195,9 +195,6 @@ class ProtJjsoftAlignTomo3dTomogram(ProtBaseTomo3d):
     def _methods(self):
         pass
 
-    def _citations(self):
-        return ['Fernandez2018', 'Fernandez2009']
-
     # --------------------------- UTILS functions --------------------------------------------
     @staticmethod
     def getTsFilesMotComp(tsFolder, tSId):

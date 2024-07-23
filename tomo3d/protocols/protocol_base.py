@@ -88,15 +88,6 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
         self._closeOutputSet()
 
     # --------------------------- INFO functions --------------------------------------------
-    def _validate(self):
-        errorMsg = []
-        if self.height.get() % 2 == 1:
-            errorMsg.append('The thickness must be an even number')
-
-        return errorMsg
-
-    def _citations(self):
-        return ['Fernandez2018','Fernandez2009']
 
     # --------------------------- UTILS functions --------------------------------------------
     @staticmethod
@@ -141,5 +132,3 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
 
     def getInputSet(self):
         pass
-
-

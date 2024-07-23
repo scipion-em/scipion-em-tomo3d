@@ -161,9 +161,6 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
             self.call_BFlow(tsId)
 
     # --------------------------- INFO functions --------------------------------------------
-    def _validate(self):
-        pass
-
     def _citations(self):
         return ['Fernandez2018_tomoeed', 'Fernandez2009_tomobflow']
 

@@ -23,10 +23,12 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import logging
 from tomo3d.protocols.protocol_base import ProtBaseTomo3d
 from pyworkflow.utils import makePath
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED, BooleanParam, PointerParam
+logger = logging.getLogger(__name__)
 
 # Reconstruction methods
 WBP = 0
@@ -91,11 +93,15 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
     def _defineInputParams(form):
         # First we customize the inputParticles param to fit our needs in this protocol
         form.addSection(label='Input')
-        form.addParam('inputSetOfTiltSeries', PointerParam, important=True,
+        form.addParam('inputSetOfTiltSeries', PointerParam,
+                      important=True,
                       pointerClass='SetOfTiltSeries',
                       label='Tilt series',
                       help='Tilt Series to reconstruct the tomograms. Ideally these tilt series'
                             'should contain alignment information.')
+        form.addParam('recEvenOdd', BooleanParam,
+                      label='Reconstruct the even/odd tomograms?',
+                      default=False)
 
     @staticmethod
     def _defineSetShapeParams(form):
@@ -156,8 +162,8 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         for tsId in self.objDict.keys():
             convertId = self._insertFunctionStep(self.convertInputStep, tsId)
             recId = self._insertFunctionStep(self.reconstructTomogramStep, tsId, prerequisites=convertId)
-            createOutputId = self._insertFunctionStep(self.createOutputStep, tsId, prerequisites=recId)
-            stepIds.extend([convertId, recId, createOutputId])
+            # createOutputId = self._insertFunctionStep(self.createOutputStep, tsId, prerequisites=recId)
+            stepIds.extend([convertId, recId])#, createOutputId])
         self._insertFunctionStep(self.closeOutputSetsStep, prerequisites=stepIds)
 
     # --------------------------- STEPS functions --------------------------------------------
@@ -181,7 +187,6 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
 
     def reconstructTomogramStep(self, tsId):
         TsPath, AnglesPath = self.getTsFiles(self._getTsTmpDir(tsId), tsId)
-        outTomoPath = self._getTmpTomoOutFName(tsId)
         params = ''
         if self.method.get() == SIRT:
             params += ' -S -l %i ' % self.nIterations.get()
@@ -193,12 +198,33 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
             if self.height.get() != 0:
                 params += ' -z {}'.format(self.height.get())
 
-        args = '-i {} -a {} -o {} -t {}'.format(TsPath, AnglesPath, outTomoPath, self.numberOfThreads)
+        args = '-i {} -a {} -t {}'.format(TsPath, AnglesPath, self.numberOfThreads)
         args += params
-        self.runJob(Plugin.getTomo3dProgram(), args)
-        self.rotXTomo(tsId)
+
+        msg = f'{tsId}: Reconstructing the tomogram'
+        filesToRecDict = {self._getTmpTomoOutFName(tsId): msg}
+        ts = self.objDict[tsId]
+        if self.recEvenOdd.get():
+            filesToRecDict[ts.getEvenFileName()] = f'{msg} EVEN'
+            filesToRecDict[ts.getOddFileName()] = f'{msg} ODD'
+
+        for fileName, recMsg in filesToRecDict.items():
+            logger.info(recMsg)
+            args += f' -o {fileName}'
+            self.runJob(Plugin.getTomo3dProgram(), args)
+        # self.rotXTomo(tsId)
 
     # --------------------------- INFO functions --------------------------------------------
+    def _validate(self):
+        errorMsg = []
+        if self.height.get() % 2 == 1:
+            errorMsg.append('The thickness must be an even number')
+        if self.recEvenOdd.get() and not self.inputSetOfTiltSeries.get().hasOddEven():
+            errorMsg.append('The even/odd tomograms cannot be reconstructed as no even/odd tilt-series are found '
+                            'in the metadata of the introduced tilt-series.')
+
+        return errorMsg
+
     def _summary(self):
         summary = []
         return summary

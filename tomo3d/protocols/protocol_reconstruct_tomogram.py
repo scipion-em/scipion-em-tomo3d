@@ -162,7 +162,9 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         for tsId in self.objDict.keys():
             convertId = self._insertFunctionStep(self.convertInputStep, tsId)
             recId = self._insertFunctionStep(self.reconstructTomogramStep, tsId, prerequisites=convertId)
-            createOutputId = self._insertFunctionStep(self.createOutputStep, tsId, prerequisites=recId)
+            createOutputId = self._insertFunctionStep(self.createOutputStep, tsId,
+                                                      doEvenOdd=self.recEvenOdd.get(),
+                                                      prerequisites=recId)
             stepIds.extend([convertId, recId, createOutputId])
         self._insertFunctionStep(self.closeOutputSetsStep, prerequisites=stepIds)
 

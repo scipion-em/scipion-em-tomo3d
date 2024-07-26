@@ -74,7 +74,7 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
         with mrcfile.mmap(outTomoFile, mode='w+') as mrc:
             mrc.set_data(rotData)
 
-    def createOutputStep(self, tsId):
+    def createOutputStep(self, tsId, doEvenOdd=False):
         obj = self.objDict[tsId]
         acq = obj.getAcquisition().clone()
         outputTomos = self._getOutputSetOfTomograms()
@@ -84,7 +84,7 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
         tomo.setSamplingRate(obj.getSamplingRate())
         tomo.setAcquisition(acq)
         tomo.setOrigin()
-        if self.recEvenOdd.get():
+        if doEvenOdd:
             tomo.setHalfMaps([self._getOutTomoFile(tsId, suffix=EVEN), self._getOutTomoFile(tsId, suffix=ODD)])
         outputTomos.append(tomo)
         outputTomos.update(tomo)

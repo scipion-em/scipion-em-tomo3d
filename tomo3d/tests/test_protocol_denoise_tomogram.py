@@ -101,4 +101,4 @@ class TestTomoDenoising(TestBaseCentralizedLayer):
                             expectedSetSize=len(expectedDimensionsDict),
                             expectedSRate=self.bin4SRate,
                             expectedDimensions=expectedDimensionsDict,
-                            isHetereogeneousSet=True)
+                            isHeterogeneousSet=True)

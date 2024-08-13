@@ -25,98 +25,80 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
-from os.path import exists
+from pyworkflow.tests import setupTestProject, DataSet
+from pyworkflow.utils import magentaStr
+from tomo.tests import DataSetRe4STATuto, RE4_STA_TUTO
+from tomo.tests.test_base_centralized_layer import TestBaseCentralizedLayer
+from tomo3d.protocols.protocol_base import outputTomo3dObjects
+from tomo3d.protocols.protocol_denoise_tomogram import ProtTomo3dProtDenoiseTomogram, DENOISE_EED, \
+    DENOISE_BF
+from tomo.protocols.protocol_import_tomograms import ProtImportTomograms, OUTPUT_NAME
 
-import numpy as np
-from pyworkflow.tests import BaseTest, setupTestProject, DataSet
-from pyworkflow.utils import magentaStr, removeBaseExt
-from tomo3d.protocols.protocol_denoise_tomogram import ProtJjsoftProtDenoiseTomogram, outputDenoiseObjects
-from tomo.protocols.protocol_import_tomograms import ProtImportTomograms
 
-
-class TestTomogramDenoising(BaseTest):
-
-    jjsoftDataTest = None
-    setOfTomograms = None
-    samplingRate = 1.35
+class TestTomoDenoising(TestBaseCentralizedLayer):
+    bin4SRate = DataSetRe4STATuto.unbinnedPixSize.value * 4
 
     @classmethod
     def setUpClass(cls):
-        """Prepare the data that we will use later on."""
-        setupTestProject(cls)  # defined in BaseTest, creates cls.proj
-
-        cls.jjsoftDataTest = DataSet.getDataSet('tomo-em')
-        cls.setOfTomograms = cls._importTomograms()
+        setupTestProject(cls)
+        cls.ds = DataSet.getDataSet(RE4_STA_TUTO)
+        cls.importedTomos = cls._runImportTomograms()
+        # 5 TS with no. tilt-images:
+        #   - TS_01 = 40
+        #   - TS_03 = 40
+        #   - TS_43 = 41
+        #   - TS_45 = 41
+        #   - TS_54 = 41
+        #
+        # 5 tomograms with a thickness of (px):
+        #   - TS_01 = 340
+        #   - TS_03 = 280
+        #   - TS_43 = 300
+        #   - TS_45 = 300
+        #   - TS_54 = 280
 
     @classmethod
-    def _importTomograms(cls):
-        """ Importing a set of tomograms
-        """
-        pImpTomograms = cls.newProtocol(ProtImportTomograms,
-                                        filesPath=cls.jjsoftDataTest.getFile('tomo'),
-                                        samplingRate=cls.samplingRate,
-                                        acquisitionAngleMax=40.0,
-                                        acquisitionAngleMin=-40.0,
-                                        tiltAxisAngle=90)
+    def _runImportTomograms(cls):
+        print(magentaStr("\n==> Importing the tomograms:"))
+        protImportTomos = cls.newProtocol(ProtImportTomograms,
+                                          filesPath=cls.ds.getFile(DataSetRe4STATuto.tsPath.value),
+                                          filesPattern='TS_0*.mrc',  # TS_01 and TS_03
+                                          samplingRate=DataSetRe4STATuto.sRateBin4.value)  # Bin 4
+        cls.launchProtocol(protImportTomos)
+        outTomos = getattr(protImportTomos, OUTPUT_NAME, None)
+        return outTomos
 
-        pImpTomograms.setObjLabel('Import tomograms')
-
-        # we launch the protocol to obtain the tomograms
-        cls.launchProtocol(pImpTomograms, wait=True)
-
-        # Setting the set of tomograms object
-        return pImpTomograms.Tomograms
-
-    def _runDenoising(self, denoisingMethod, niter, timestep):
-        # preparing and launching the protocol
-
-        if denoisingMethod == ProtJjsoftProtDenoiseTomogram.DENOISE_EED:
-            pDenoise = self.newProtocol(ProtJjsoftProtDenoiseTomogram,
-                                        inputSetTomograms=self.setOfTomograms,
-                                        method=denoisingMethod,
-                                        SigmaGaussian=0.5,
-                                        nIter=niter,
-                                        TimeStep=timestep)
-        else:
-            pDenoise = self.newProtocol(ProtJjsoftProtDenoiseTomogram,
-                                        inputSetTomograms=self.setOfTomograms,
-                                        method=denoisingMethod,
-                                        nIterBflow=niter,
-                                        TimeStep=timestep,
-                                        SigmaGaussian=0.5)
-
-        self.launchProtocol(pDenoise, wait=True)
-        return getattr(pDenoise, outputDenoiseObjects.tomograms.name, None)
-
-    def testDenoisingEED(self):
-        print("\n", magentaStr(" Test EED denoising ".center(75, '-')))
-        # preparing and launching the protocol
-        setOfEEDDenoisedTomograms = self._runDenoising(ProtJjsoftProtDenoiseTomogram.DENOISE_EED, 10, 0.1)
-        # check results
-        self._checkResults(setOfEEDDenoisedTomograms)
+    @classmethod
+    def _runDenoising(cls, denosingMethod=None):
+        denoisingStr = 'BFlow' if denosingMethod == DENOISE_BF else 'EED'
+        print(magentaStr(f"\n==> Denoising the tomograms using the method {denoisingStr}:"))
+        protDenosing = cls.newProtocol(ProtTomo3dProtDenoiseTomogram,
+                                       inputSetTomograms=cls.importedTomos,
+                                       method=denosingMethod,
+                                       numberOfThreads=8)
+        cls.launchProtocol(protDenosing)
+        protDenosing.setObjLabel(denoisingStr)
+        return getattr(protDenosing, outputTomo3dObjects.tomograms.name, None)
 
     def testDenoisingBFlow(self):
-        print ("\n", magentaStr(" Test BFlow denoising ".center(75, '-')))
-        # preparing and launching the protocol
-        setOfEEDDenoisedTomograms = self._runDenoising(ProtJjsoftProtDenoiseTomogram.DENOISE_BF, 50, 0.15)
-        # check results
-        self._checkResults(setOfEEDDenoisedTomograms)
+        denoisedTomos = self._runDenoising(denosingMethod=DENOISE_BF)
+        self._checkResults(denoisedTomos)
 
-    def _checkResults(self, outputSet):
-        self.assertIsNotNone(outputSet, "There was some problem with the output")
-        self.assertEqual(outputSet.getSamplingRate(), self.samplingRate)
-        self.assertEqual(outputSet.getSize(), self.setOfTomograms.getSize(),
-                         "The number of the denoised tomograms is wrong")
+    def testDenoisingEED(self):
+        denoisedTomos = self._runDenoising(denosingMethod=DENOISE_EED)
+        self._checkResults(denoisedTomos)
 
-        # Tomograms checks
-        testOrigin = np.array([
-            [1.0, 0.0, 0.0, -691.2],
-            [0.0, 1.0, 0.0, -691.2],
-            [0.0, 0.0, 1.0, -345.6],
-            [0.0, 0.0, 0.0, 1.0]])
-
-        for tomo in outputSet:
-            self.assertTrue(exists(tomo.getFileName()))
-            self.assertEqual(tomo.getTsId(), removeBaseExt(tomo.getFileName()))  # Tomograms were imported, so the tsId would be the tomo basename
-            self.assertEqual(tomo.getSamplingRate(), self.samplingRate)
-            self.assertTrue(np.allclose(tomo.getOrigin(force=True).getMatrix(), testOrigin, rtol=1e-2))
+    def _checkResults(self, tomoSet):
+        TS_01 = 'TS_01'
+        TS_03 = 'TS_03'
+        tomoDimsThk280 = [928, 928, 280]
+        tomoDimsThk340 = [928, 928, 340]
+        expectedDimensionsDict = {
+            TS_01: tomoDimsThk340,
+            TS_03: tomoDimsThk280,
+        }
+        self.checkTomograms(tomoSet,
+                            expectedSetSize=len(expectedDimensionsDict),
+                            expectedSRate=self.bin4SRate,
+                            expectedDimensions=expectedDimensionsDict,
+                            isHeterogeneousSet=True)

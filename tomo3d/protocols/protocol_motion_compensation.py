@@ -25,7 +25,7 @@
 # **************************************************************************
 from os.path import join, exists
 from tomo3d import Plugin
-from tomo3d.protocols.protocol_base_reconstruct import ProtBaseReconstruct
+from tomo3d.protocols.protocol_base import ProtBaseTomo3d
 from pyworkflow import BETA
 from pyworkflow.utils import makePath
 from pyworkflow.protocol.params import IntParam, EnumParam, PointerParam, FloatParam, LEVEL_ADVANCED, BooleanParam
@@ -46,7 +46,7 @@ W_HAMMING = 2
 W_SIRT = 3
 
 
-class ProtJjsoftAlignReconstructTomogram(ProtBaseReconstruct):
+class ProtJjsoftAlignTomo3dTomogram(ProtBaseTomo3d):
     """ Reconstruct tomograms by aligning the tilt series using the fiducial positions with tomoalign
     and then reconstructs the tomogram with tomorec.
     Software from : https://sites.google.com/site/3demimageprocessing/
@@ -195,9 +195,6 @@ class ProtJjsoftAlignReconstructTomogram(ProtBaseReconstruct):
     def _methods(self):
         pass
 
-    def _citations(self):
-        return ['Fernandez2018', 'Fernandez2009']
-
     # --------------------------- UTILS functions --------------------------------------------
     @staticmethod
     def getTsFilesMotComp(tsFolder, tSId):
@@ -226,11 +223,11 @@ class ProtJjsoftAlignReconstructTomogram(ProtBaseReconstruct):
 
     @staticmethod
     def getAnglesFile(workingFolder, tsId):
-        return ProtJjsoftAlignReconstructTomogram.getPathAndBaseName(workingFolder, tsId) + '.tlt'
+        return ProtJjsoftAlignTomo3dTomogram.getPathAndBaseName(workingFolder, tsId) + '.tlt'
 
     @staticmethod
     def getImodXfFile(workingFolder, tsId):
-        return ProtJjsoftAlignReconstructTomogram.getPathAndBaseName(workingFolder, tsId) + '.xf'
+        return ProtJjsoftAlignTomo3dTomogram.getPathAndBaseName(workingFolder, tsId) + '.xf'
 
     @staticmethod
     def getImodTxtFiducialsFile(workingFolder, tsId):

@@ -182,8 +182,8 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         swapXY = False
         if 45 < abs(rotationAngle) < 135:
             swapXY = True
-        ts.applyTransform(outputStackFn, swapXY=swapXY, excludeViews=True)
-        ts.generateTltFile(outputTltFn, excludeViews=True)
+        ts.applyTransform(outputStackFn, swapXY=swapXY)
+        ts.generateTltFile(outputTltFn)
 
     def reconstructTomogramStep(self, tsId):
         params = ''

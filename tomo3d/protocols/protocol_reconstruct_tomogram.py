@@ -24,7 +24,7 @@
 # *
 # **************************************************************************
 import logging
-from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD
+from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD, DO_EVEN_ODD
 from pyworkflow.utils import makePath
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED, BooleanParam, PointerParam
@@ -99,7 +99,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
                       label='Tilt series',
                       help='Tilt Series to reconstruct the tomograms. Ideally these tilt series'
                             'should contain alignment information.')
-        form.addParam('recEvenOdd', BooleanParam,
+        form.addParam(DO_EVEN_ODD, BooleanParam,
                       label='Reconstruct the even/odd tomograms?',
                       default=False)
 
@@ -201,7 +201,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         tsPath, anglesPath = self.getTsFiles(self._getTsTmpDir(tsId), tsId)
         tomoRecInfoDict = {'': tsPath}  # {suffix: fileName}
         ts = self.objDict[tsId]
-        if self.recEvenOdd.get():
+        if self.doEvenOdd.get():
             tomoRecInfoDict[EVEN] = ts.getEvenFileName()
             tomoRecInfoDict[ODD] = ts.getOddFileName()
 
@@ -218,7 +218,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         errorMsg = []
         if self.height.get() % 2 == 1:
             errorMsg.append('The thickness must be an even number')
-        if self.recEvenOdd.get() and not self.inputSetOfTiltSeries.get().hasOddEven():
+        if self.doEvenOdd.get() and not self.inputSetOfTiltSeries.get().hasOddEven():
             errorMsg.append('The even/odd tomograms cannot be reconstructed as no even/odd tilt-series are found '
                             'in the metadata of the introduced tilt-series.')
 

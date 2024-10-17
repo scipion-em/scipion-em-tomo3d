@@ -24,10 +24,12 @@
 # *
 # **************************************************************************
 import logging
-from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD
+from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD, DO_EVEN_ODD
 from pyworkflow.utils import makePath
 from tomo3d import Plugin
-from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED, BooleanParam, PointerParam
+from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED, BooleanParam, PointerParam, GE, \
+    GT
+
 logger = logging.getLogger(__name__)
 
 # Reconstruction methods
@@ -66,7 +68,9 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
                            'the compabitity between the images and the reconstructed tomogram. This'
                            'solution is more suitable for celullar environment, but not for '
                            'subtomogram averaging')
-        form.addParam('nIterations', IntParam, default=30,
+        form.addParam('nIterations', IntParam,
+                      default=30,
+                      validators=[GT(0)],
                       condition='method==%i' % SIRT,
                       label='Number of Iterations (SIRT)',
                       help='It sets the number of iterations for SIRT. By default,'
@@ -99,7 +103,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
                       label='Tilt series',
                       help='Tilt Series to reconstruct the tomograms. Ideally these tilt series'
                             'should contain alignment information.')
-        form.addParam('recEvenOdd', BooleanParam,
+        form.addParam(DO_EVEN_ODD, BooleanParam,
                       label='Reconstruct the even/odd tomograms?',
                       default=False)
 
@@ -115,7 +119,8 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         group = form.addGroup('Tomogram dimensions', condition='setShape')
 
         group.addParam('height', IntParam,
-                       default=0,
+                       default=300,
+                       validators=[GE(0)],
                        label='Thickness (px)',
                        help='By default, the height (i.e. thickness) of the reconstructed tomogram '
                             ' is equal to the X dimension of the images in the tilt-series. '
@@ -129,6 +134,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         group.addParam('width', IntParam,
                        expertLevel=LEVEL_ADVANCED,
                        default=0,
+                       validators=[GE(0)],
                        label='Width (px)',
                        help='By default, the width of the reconstructed tomogram is equal to '
                             ' the X dimension of the images in the tilt-series. This option '
@@ -150,10 +156,8 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
                                   ' of the images), which represent the indices of the first and last '
                                   ' slices to be included in the output tomogram.')
 
-        line.addParam('iniSlice', IntParam, default=0, label='Initial')
-        line.addParam('finSlice', IntParam, default=0, label='Final')
-
-        form.addParallelSection(threads=4, mpi=0)
+        line.addParam('iniSlice', IntParam, default=0, validators=[GE(0)], label='Initial')
+        line.addParam('finSlice', IntParam, default=0, validators=[GE(0)], label='Final')
 
     # --------------------------- INSERT steps functions --------------------------------------------
     def _insertAllSteps(self):
@@ -201,7 +205,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         tsPath, anglesPath = self.getTsFiles(self._getTsTmpDir(tsId), tsId)
         tomoRecInfoDict = {'': tsPath}  # {suffix: fileName}
         ts = self.objDict[tsId]
-        if self.recEvenOdd.get():
+        if self.doEvenOdd.get():
             tomoRecInfoDict[EVEN] = ts.getEvenFileName()
             tomoRecInfoDict[ODD] = ts.getOddFileName()
 
@@ -218,7 +222,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         errorMsg = []
         if self.height.get() % 2 == 1:
             errorMsg.append('The thickness must be an even number')
-        if self.recEvenOdd.get() and not self.inputSetOfTiltSeries.get().hasOddEven():
+        if self.doEvenOdd.get() and not self.inputSetOfTiltSeries.get().hasOddEven():
             errorMsg.append('The even/odd tomograms cannot be reconstructed as no even/odd tilt-series are found '
                             'in the metadata of the introduced tilt-series.')
 

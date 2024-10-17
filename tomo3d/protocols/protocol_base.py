@@ -35,7 +35,7 @@ from tomo.objects import Tomogram, SetOfTomograms
 # Odd/even
 EVEN = 'even'
 ODD = 'odd'
-DO_EVEN_ODD = 'recEvenOdd'
+DO_EVEN_ODD = 'doEvenOdd'
 
 
 class outputTomo3dObjects(Enum):

@@ -27,7 +27,8 @@ import logging
 from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD, DO_EVEN_ODD
 from pyworkflow.utils import makePath
 from tomo3d import Plugin
-from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED, BooleanParam, PointerParam
+from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED, BooleanParam, PointerParam, GE
+
 logger = logging.getLogger(__name__)
 
 # Reconstruction methods
@@ -115,7 +116,8 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         group = form.addGroup('Tomogram dimensions', condition='setShape')
 
         group.addParam('height', IntParam,
-                       default=0,
+                       default=300,
+                       validators=[GE(0)],
                        label='Thickness (px)',
                        help='By default, the height (i.e. thickness) of the reconstructed tomogram '
                             ' is equal to the X dimension of the images in the tilt-series. '
@@ -129,6 +131,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         group.addParam('width', IntParam,
                        expertLevel=LEVEL_ADVANCED,
                        default=0,
+                       validators=[GE(0)],
                        label='Width (px)',
                        help='By default, the width of the reconstructed tomogram is equal to '
                             ' the X dimension of the images in the tilt-series. This option '
@@ -150,10 +153,8 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
                                   ' of the images), which represent the indices of the first and last '
                                   ' slices to be included in the output tomogram.')
 
-        line.addParam('iniSlice', IntParam, default=0, label='Initial')
-        line.addParam('finSlice', IntParam, default=0, label='Final')
-
-        form.addParallelSection(threads=4, mpi=0)
+        line.addParam('iniSlice', IntParam, default=0, validators=[GE(0)], label='Initial')
+        line.addParam('finSlice', IntParam, default=0, validators=[GE(0)], label='Final')
 
     # --------------------------- INSERT steps functions --------------------------------------------
     def _insertAllSteps(self):

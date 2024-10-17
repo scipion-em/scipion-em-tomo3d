@@ -27,7 +27,8 @@ import logging
 from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD, DO_EVEN_ODD
 from pyworkflow.utils import makePath
 from tomo3d import Plugin
-from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED, BooleanParam, PointerParam, GE
+from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED, BooleanParam, PointerParam, GE, \
+    GT
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,9 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
                            'the compabitity between the images and the reconstructed tomogram. This'
                            'solution is more suitable for celullar environment, but not for '
                            'subtomogram averaging')
-        form.addParam('nIterations', IntParam, default=30,
+        form.addParam('nIterations', IntParam,
+                      default=30,
+                      validators=GT(0),
                       condition='method==%i' % SIRT,
                       label='Number of Iterations (SIRT)',
                       help='It sets the number of iterations for SIRT. By default,'

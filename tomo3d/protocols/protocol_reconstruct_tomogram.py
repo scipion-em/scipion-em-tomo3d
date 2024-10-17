@@ -70,7 +70,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
                            'subtomogram averaging')
         form.addParam('nIterations', IntParam,
                       default=30,
-                      validators=GT(0),
+                      validators=[GT(0)],
                       condition='method==%i' % SIRT,
                       label='Number of Iterations (SIRT)',
                       help='It sets the number of iterations for SIRT. By default,'

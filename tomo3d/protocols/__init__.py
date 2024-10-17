@@ -27,5 +27,4 @@
 
 from .protocol_denoise_tomogram import ProtTomo3dProtDenoiseTomogram
 from .protocol_reconstruct_tomogram import ProtTomo3dReconstrucTomo
-# from .protocol_align_ts import ProtJjsoftAlignTs
-# from .protocol_motion_compensation import ProtJjsoftAlignReconstructTomogram
+

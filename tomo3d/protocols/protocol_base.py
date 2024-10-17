@@ -27,7 +27,7 @@ from enum import Enum
 from os.path import join
 import mrcfile
 import numpy as np
-from pyworkflow.object import Set
+from pyworkflow.object import Set, Boolean
 from tomo.protocols import ProtTomoBase
 from pwem.protocols import EMProtocol
 from tomo.objects import Tomogram, SetOfTomograms
@@ -35,6 +35,7 @@ from tomo.objects import Tomogram, SetOfTomograms
 # Odd/even
 EVEN = 'even'
 ODD = 'odd'
+DO_EVEN_ODD = 'doEvenOdd'
 
 
 class outputTomo3dObjects(Enum):
@@ -74,7 +75,7 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
         with mrcfile.mmap(outTomoFile, mode='w+') as mrc:
             mrc.set_data(rotData)
 
-    def createOutputStep(self, tsId, doEvenOdd=False):
+    def createOutputStep(self, tsId):
         obj = self.objDict[tsId]
         acq = obj.getAcquisition().clone()
         outputTomos = self._getOutputSetOfTomograms()
@@ -84,7 +85,7 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
         tomo.setSamplingRate(obj.getSamplingRate())
         tomo.setAcquisition(acq)
         tomo.setOrigin()
-        if doEvenOdd:
+        if getattr(self, DO_EVEN_ODD, Boolean(False)).get():
             tomo.setHalfMaps([self._getOutTomoFile(tsId, suffix=EVEN), self._getOutTomoFile(tsId, suffix=ODD)])
         outputTomos.append(tomo)
         outputTomos.update(tomo)

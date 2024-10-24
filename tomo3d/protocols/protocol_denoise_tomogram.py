@@ -24,6 +24,9 @@
 # *
 # **************************************************************************
 import logging
+
+from pyworkflow.protocol import STEPS_PARALLEL
+from pyworkflow.utils import Message
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, PointerParam
 from tomo3d.protocols.protocol_base import ProtBaseTomo3d
@@ -48,6 +51,7 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
       in terms of memory requirements.
     """
     _label = 'denoise tomogram'
+    stepsExecutionMode = STEPS_PARALLEL
 
     def __init__(self, **args):
         super().__init__(**args)
@@ -55,10 +59,11 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
     # --------------------------- DEFINE param functions --------------------------------------------
     def _defineParams(self, form):
         # First we customize the inputParticles param to fit our needs in this protocol
-        form.addSection(label='Input')
+        form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inputSetTomograms', PointerParam, pointerClass='SetOfTomograms',
                       label='Set Of Tomograms',
                       help='Set of tomograms that will be denoised.')
+        self._insertBinThreadsParam(form)
         form.addParam('method', EnumParam,
                       choices=['Edge Enhancing Diffusion (EED)', 'BFlow'],
                       default=DENOISE_EED,
@@ -134,17 +139,23 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
                            ' range [0.1,0.15]. The larger the time step, the lower the '
                            ' number of iterations needed.',
                       expertLevel=LEVEL_ADVANCED)
-        form.addParallelSection(threads=4, mpi=0)
+        form.addParallelSection(threads=2, mpi=0)
 
     # --------------------------- INSERT steps functions --------------------------------------------
     def _insertAllSteps(self):
         self._initialize()
         stepIds = []
         for tsId in self.objDict.keys():
-            denoiseId = self._insertFunctionStep(self.denoiseTomogramStep, tsId)
-            outStepId = self._insertFunctionStep(self.createOutputStep, tsId, prerequisites=denoiseId)
-            stepIds.extend([denoiseId, outStepId])
-        self._insertFunctionStep(self.closeOutputSetsStep, prerequisites=stepIds)
+            denoiseId = self._insertFunctionStep(self.denoiseTomogramStep, tsId,
+                                                 prerequisites=[],
+                                                 needsGPU=False)
+            outStepId = self._insertFunctionStep(self.createOutputStep, tsId,
+                                                 prerequisites=denoiseId,
+                                                 needsGPU=False)
+            stepIds.append(outStepId)
+        self._insertFunctionStep(self.closeOutputSetsStep,
+                                 prerequisites=stepIds,
+                                 needsGPU=False)
 
     # --------------------------- STEPS functions --------------------------------------------
     def _initialize(self):
@@ -168,7 +179,7 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
     def call_BFlow(self, tsId):
         """Denoises de tomogram using the AND method"""
         params = '-g {} -i {} -s {} -t {}'.format(self.SigmaGaussian.get(), self.nIterBflow.get(),
-                                                  self.TimeStepBflow.get(), self.numberOfThreads)
+                                                  self.TimeStepBflow.get(), self.binThreads.get())
         outTomoFile = self._getOutTomoFile(tsId)
         args = '{} {} {}'.format(params, self.objDict[tsId].getFileName(), outTomoFile)
         self.runJob(Plugin.getTomoBFlowProgram(), args)

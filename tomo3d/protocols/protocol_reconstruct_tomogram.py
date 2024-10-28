@@ -198,7 +198,8 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         swapXY = False
         if 45 < abs(rotationAngle) < 135:
             swapXY = True
-        ts.applyTransform(outputStackFn, swapXY=swapXY)
+        presentAcqOrders = ts.getTsPresentAcqOrders()
+        ts.applyTransform(outputStackFn, swapXY=swapXY, presentAcqOrders=presentAcqOrders)
         ts.generateTltFile(outputTltFn)
 
     def reconstructTomogramStep(self, tsId):

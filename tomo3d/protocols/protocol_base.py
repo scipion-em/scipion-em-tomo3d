@@ -134,7 +134,6 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
             tomograms.setStreamState(Set.STREAM_OPEN)
             setattr(self, outputTomo3dObjects.tomograms.name, tomograms)
             self._defineOutputs(**{self._OUTNAME: tomograms})
-
             self._defineSourceRelation(inSet, tomograms)
 
         return tomograms

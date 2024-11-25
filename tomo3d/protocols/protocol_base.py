@@ -28,6 +28,7 @@ from os.path import join
 import mrcfile
 import numpy as np
 from pyworkflow.object import Set, Boolean
+from pyworkflow.protocol import IntParam
 from tomo.protocols import ProtTomoBase
 from pwem.protocols import EMProtocol
 from tomo.objects import Tomogram, SetOfTomograms
@@ -58,6 +59,17 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
     def _defineParams(self, form):
         pass
 
+    @staticmethod
+    def _insertBinThreadsParam(form):
+        form.addParam('binThreads', IntParam,
+                      label='Tomo3d threads',
+                      default=2,
+                      help='Number of threads used by tomo3d each time it is called in the protocol execution. For '
+                           'example, if 2 Scipion threads and 3 tomo3d threads are set, the tomograms will be '
+                           'processed in groups of 2 at the same time with a call of tomo3d with 3 threads each, so '
+                           '6 threads will be used at the same time. Beware the memory of your machine has '
+                           'memory enough to load together the number of tomograms specified by Scipion threads.')
+
     # --------------------------- INSERT steps functions --------------------------------------------
     def _insertAllSteps(self):
         pass
@@ -76,21 +88,22 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
             mrc.set_data(rotData)
 
     def createOutputStep(self, tsId):
-        obj = self.objDict[tsId]
-        acq = obj.getAcquisition().clone()
-        outputTomos = self._getOutputSetOfTomograms()
-        tomo = Tomogram()
-        tomo.setTsId(obj.getTsId())
-        tomo.setLocation(self._getOutTomoFile(tsId))
-        tomo.setSamplingRate(obj.getSamplingRate())
-        tomo.setAcquisition(acq)
-        tomo.setOrigin()
-        if getattr(self, DO_EVEN_ODD, Boolean(False)).get():
-            tomo.setHalfMaps([self._getOutTomoFile(tsId, suffix=EVEN), self._getOutTomoFile(tsId, suffix=ODD)])
-        outputTomos.append(tomo)
-        outputTomos.update(tomo)
-        outputTomos.write()
-        self._store(outputTomos)
+        with self._lock:
+            obj = self.objDict[tsId]
+            acq = obj.getAcquisition().clone()
+            outputTomos = self._getOutputSetOfTomograms()
+            tomo = Tomogram()
+            tomo.setTsId(obj.getTsId())
+            tomo.setLocation(self._getOutTomoFile(tsId))
+            tomo.setSamplingRate(obj.getSamplingRate())
+            tomo.setAcquisition(acq)
+            tomo.setOrigin()
+            if getattr(self, DO_EVEN_ODD, Boolean(False)).get():
+                tomo.setHalfMaps([self._getOutTomoFile(tsId, suffix=EVEN), self._getOutTomoFile(tsId, suffix=ODD)])
+            outputTomos.append(tomo)
+            outputTomos.update(tomo)
+            outputTomos.write()
+            self._store(outputTomos)
 
     def closeOutputSetsStep(self):
         self._closeOutputSet()
@@ -121,7 +134,6 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
             tomograms.setStreamState(Set.STREAM_OPEN)
             setattr(self, outputTomo3dObjects.tomograms.name, tomograms)
             self._defineOutputs(**{self._OUTNAME: tomograms})
-
             self._defineSourceRelation(inSet, tomograms)
 
         return tomograms

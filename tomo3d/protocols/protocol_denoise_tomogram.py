@@ -28,7 +28,7 @@ import logging
 from pyworkflow.protocol import STEPS_PARALLEL
 from pyworkflow.utils import Message
 from tomo3d import Plugin
-from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, PointerParam, GE, LE
+from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, PointerParam, GT
 from tomo3d.protocols.protocol_base import ProtBaseTomo3d
 
 logger = logging.getLogger(__name__)
@@ -98,7 +98,7 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
 
         form.addParam('nIterBflow', IntParam,
                       default=70,
-                      validators=[GE(50),LE(250)],
+                      validators=[GT(0)],
                       label='Number of Iterations',
                       condition='method == %i' % DENOISE_BF,
                       help='Number of diffusion iterations.\n\n'

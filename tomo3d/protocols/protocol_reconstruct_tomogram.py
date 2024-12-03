@@ -24,8 +24,10 @@
 # *
 # **************************************************************************
 import logging
+
+from pyworkflow.protocol import STEPS_PARALLEL
 from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD, DO_EVEN_ODD
-from pyworkflow.utils import makePath
+from pyworkflow.utils import makePath, Message
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED, BooleanParam, PointerParam, GE, \
     GT
@@ -49,6 +51,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
     of processing time, in the order of a few seconds with WBP or minutes with SIRT.
     """
     _label = 'reconstruct tomogram'
+    stepsExecutionMode = STEPS_PARALLEL
 
     def __init__(self, **args):
         super().__init__(**args)
@@ -56,6 +59,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
     # --------------------------- DEFINE param functions --------------------------------------------
     def _defineParams(self, form):
         self._defineInputParams(form)
+        self._insertBinThreadsParam(form)
         form.addParam('method', EnumParam,
                       choices=['WBP (Fast)', 'SIRT (Slow)'], default=WBP,
                       label='Reconstruction method',
@@ -91,12 +95,12 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
                            ' would turn off the Hamming filter. Values in-between would '
                            ' preserve low-frequency components and modulate the contribution '
                            ' of the other frequency components')
-        form.addParallelSection(threads=4, mpi=0)
+        form.addParallelSection(threads=2, mpi=0)
 
     @staticmethod
     def _defineInputParams(form):
         # First we customize the inputParticles param to fit our needs in this protocol
-        form.addSection(label='Input')
+        form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inputSetOfTiltSeries', PointerParam,
                       important=True,
                       pointerClass='SetOfTiltSeries',
@@ -164,11 +168,19 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         self._initialize()
         stepIds = []
         for tsId in self.objDict.keys():
-            convertId = self._insertFunctionStep(self.convertInputStep, tsId)
-            recId = self._insertFunctionStep(self.reconstructTomogramStep, tsId, prerequisites=convertId)
-            createOutputId = self._insertFunctionStep(self.createOutputStep, tsId, prerequisites=recId)
-            stepIds.extend([convertId, recId, createOutputId])
-        self._insertFunctionStep(self.closeOutputSetsStep, prerequisites=stepIds)
+            convertId = self._insertFunctionStep(self.convertInputStep, tsId,
+                                                 prerequisites=[],
+                                                 needsGPU=False)
+            recId = self._insertFunctionStep(self.reconstructTomogramStep, tsId,
+                                             prerequisites=convertId,
+                                             needsGPU=False)
+            createOutputId = self._insertFunctionStep(self.createOutputStep, tsId,
+                                                      prerequisites=recId,
+                                                      needsGPU=False)
+            stepIds.append(createOutputId)
+        self._insertFunctionStep(self.closeOutputSetsStep,
+                                 prerequisites=stepIds,
+                                 needsGPU=False)
 
     # --------------------------- STEPS functions --------------------------------------------
     def _initialize(self):
@@ -186,8 +198,9 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         swapXY = False
         if 45 < abs(rotationAngle) < 135:
             swapXY = True
-        ts.applyTransform(outputStackFn, swapXY=swapXY, excludeViews=True)
-        ts.generateTltFile(outputTltFn, excludeViews=True)
+        presentAcqOrders = ts.getTsPresentAcqOrders()
+        ts.applyTransform(outputStackFn, swapXY=swapXY, presentAcqOrders=presentAcqOrders)
+        ts.generateTltFile(outputTltFn)
 
     def reconstructTomogramStep(self, tsId):
         params = ''
@@ -212,7 +225,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         for suffix, inFile in tomoRecInfoDict.items():
             logger.info(f'{msg} {suffix}')
             outFile = self._getTmpTomoOutFName(tsId, suffix=suffix)
-            args = f'-i {inFile} -a {anglesPath} -o {outFile} -t {self.numberOfThreads}'
+            args = f'-i {inFile} -a {anglesPath} -o {outFile} -t {self.binThreads.get()}'
             args += params
             self.runJob(Plugin.getTomo3dProgram(), args)
             self.rotXTomo(tsId, suffix=suffix)

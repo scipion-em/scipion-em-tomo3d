@@ -59,7 +59,6 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
     # --------------------------- DEFINE param functions --------------------------------------------
     def _defineParams(self, form):
         self._defineInputParams(form)
-        self._insertBinThreadsParam(form)
         form.addParam('method', EnumParam,
                       choices=['WBP (Fast)', 'SIRT (Slow)'], default=WBP,
                       label='Reconstruction method',
@@ -95,7 +94,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
                            ' would turn off the Hamming filter. Values in-between would '
                            ' preserve low-frequency components and modulate the contribution '
                            ' of the other frequency components')
-        form.addParallelSection(threads=2, mpi=0)
+        form.addParallelSection(threads=3, mpi=0, binThreads=2)
 
     @staticmethod
     def _defineInputParams(form):

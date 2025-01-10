@@ -63,7 +63,7 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
         form.addParam('inputSetTomograms', PointerParam, pointerClass='SetOfTomograms',
                       label='Set Of Tomograms',
                       help='Set of tomograms that will be denoised.')
-        self._insertBinThreadsParam(form)
+        #self._insertBinThreadsParam(form)
         form.addParam('method', EnumParam,
                       choices=['Edge Enhancing Diffusion (EED)', 'BFlow'],
                       default=DENOISE_EED,
@@ -141,7 +141,7 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
                            ' range [0.1,0.15]. The larger the time step, the lower the '
                            ' number of iterations needed.',
                       expertLevel=LEVEL_ADVANCED)
-        form.addParallelSection(threads=2, mpi=0)
+        form.addParallelSection(threads=3, mpi=0, binThreads=2)
 
     # --------------------------- INSERT steps functions --------------------------------------------
     def _insertAllSteps(self):

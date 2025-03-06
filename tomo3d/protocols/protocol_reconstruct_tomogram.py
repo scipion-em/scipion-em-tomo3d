@@ -204,11 +204,11 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         if self.doEvenOdd.get():
             ts.applyTransformToAll(tsTmpFile,
                                    swapXY=swapXY,
-                                   presentAcqOrders=presentAcqOrders)
+                                   presentAcqOrders=presentAcqOrders,
+                                   outFileNamesEvenOdd=[tsEvenTmpFile, tsOddTmpFile])
         else:
             ts.applyTransform(tsTmpFile,
                               swapXY=swapXY,
-                              outFileNamesEvenOdd=[tsEvenTmpFile, tsOddTmpFile],
                               presentAcqOrders=presentAcqOrders)
         ts.generateTltFile(tltTmpFile)
 

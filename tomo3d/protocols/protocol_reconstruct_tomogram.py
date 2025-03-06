@@ -26,8 +26,8 @@
 import logging
 
 from pyworkflow.protocol import STEPS_PARALLEL
-from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD, DO_EVEN_ODD
-from pyworkflow.utils import makePath, Message
+from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD, DO_EVEN_ODD, RAWTLT_EXT
+from pyworkflow.utils import makePath, Message, cyanStr
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED, BooleanParam, PointerParam, GE, \
     GT
@@ -186,9 +186,12 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         self.objDict = {ts.getTsId(): ts.clone(ignoreAttrs=[]) for ts in self.inputSetOfTiltSeries.get()}
 
     def convertInputStep(self, tsId):
-        workingTmpFolder = self._getTsTmpDir(tsId)
-        makePath(workingTmpFolder, self._getTsExtraDir(tsId))
-        outputStackFn, outputTltFn = self.getTsFiles(workingTmpFolder, tsId)
+        logger.info(cyanStr(f'tsId = {tsId}: converting the inputs...'))
+        makePath(self.getWorkingDirName(tsId), self._getTsExtraDir(tsId))
+        tsTmpFile = self.getTsTmpFile(tsId)
+        tsEvenTmpFile = self.getEvenTsTmpFile(tsId)
+        tsOddTmpFile = self.getOddTsTmpFile(tsId)
+        tltTmpFile = self.getTsTmpFile(tsId, ext=RAWTLT_EXT)
         ts = self.objDict[tsId]
         rotationAngle = ts.getAcquisition().getTiltAxisAngle()
         # Check if rotation angle is greater than 45º. If so,
@@ -198,8 +201,16 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         if 45 < abs(rotationAngle) < 135:
             swapXY = True
         presentAcqOrders = ts.getTsPresentAcqOrders()
-        ts.applyTransform(outputStackFn, swapXY=swapXY, presentAcqOrders=presentAcqOrders)
-        ts.generateTltFile(outputTltFn)
+        if self.doEvenOdd.get():
+            ts.applyTransformToAll(tsTmpFile,
+                                   swapXY=swapXY,
+                                   presentAcqOrders=presentAcqOrders)
+        else:
+            ts.applyTransform(tsTmpFile,
+                              swapXY=swapXY,
+                              outFileNamesEvenOdd=[tsEvenTmpFile, tsOddTmpFile],
+                              presentAcqOrders=presentAcqOrders)
+        ts.generateTltFile(tltTmpFile)
 
     def reconstructTomogramStep(self, tsId):
         params = ''
@@ -214,17 +225,17 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
                 params += f' -z {self.height.get()}'
 
         msg = f'{tsId}: Reconstructing the tomogram'
-        tsPath, anglesPath = self.getTsFiles(self._getTsTmpDir(tsId), tsId)
-        tomoRecInfoDict = {'': tsPath}  # {suffix: fileName}
-        ts = self.objDict[tsId]
+        tomoRecInfoDict = {'': self.getTsTmpFile(tsId)}  # {suffix: fileName}
+        tltTmpFile = self.getTsTmpFile(tsId, ext=RAWTLT_EXT)
         if self.doEvenOdd.get():
-            tomoRecInfoDict[EVEN] = ts.getEvenFileName()
-            tomoRecInfoDict[ODD] = ts.getOddFileName()
+            tomoRecInfoDict[EVEN] = self.getEvenTsTmpFile(tsId)
+            tomoRecInfoDict[ODD] = self.getOddTsTmpFile(tsId)
 
         for suffix, inFile in tomoRecInfoDict.items():
+            logger.info(cyanStr(f'tsId = {tsId}: reconstructing the tomogram {suffix.upper()}...'))
             logger.info(f'{msg} {suffix}')
             outFile = self._getTmpTomoOutFName(tsId, suffix=suffix)
-            args = f'-i {inFile} -a {anglesPath} -o {outFile} -t {self.binThreads.get()}'
+            args = f'-i {inFile} -a {tltTmpFile} -o {outFile} -t {self.binThreads.get()}'
             args += params
             self.runJob(Plugin.getTomo3dProgram(), args)
             self.rotXTomo(tsId, suffix=suffix)

@@ -23,20 +23,29 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import logging
 from enum import Enum
 from os.path import join
 import mrcfile
 import numpy as np
 from pyworkflow.object import Set, Boolean
-from pyworkflow.protocol import IntParam
+from pyworkflow.utils import cyanStr
 from tomo.protocols import ProtTomoBase
 from pwem.protocols import EMProtocol
 from tomo.objects import Tomogram, SetOfTomograms
+
+logger = logging.getLogger(__name__)
 
 # Odd/even
 EVEN = 'even'
 ODD = 'odd'
 DO_EVEN_ODD = 'doEvenOdd'
+
+# Extensions
+ST_EXT = '.st'
+MRC_EXT = '.mrc'
+MRCS_EXT = '.mrcs'
+RAWTLT_EXT = '.rawtlt'
 
 
 class outputTomo3dObjects(Enum):
@@ -63,10 +72,10 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
     def _insertAllSteps(self):
         pass
 
-    def rotXTomo(self, tsId, suffix=None):
+    def rotXTomo(self, tsId, suffix=''):
         """Result of the reconstruction must be rotated 90 degrees around the X
         axis to recover the original orientation (due to tomo3d design)"""
-
+        logger.info(cyanStr(f'tsId = {tsId}: rotating the tomogram {suffix.upper()}...'))
         inTomoFile = self._getTmpTomoOutFName(tsId, suffix=suffix)
         outTomoFile = self._getOutTomoFile(tsId, suffix=suffix)
 
@@ -107,6 +116,20 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
         TsPath = prefix + '.st'
         AnglesPath = prefix + '.rawtlt'
         return TsPath, AnglesPath
+
+    def getTmpFile(self, tsId: str, ext: str = ST_EXT, suf: str = '') -> str:
+        baseName = tsId if not suf else f'{tsId}_{suf}'
+        ext = ext if ext.startswith('.') else f'.{ext}'
+        return self._getTmpPath(f'{baseName}{ext}')
+
+    def getEvenTsTmpFile(self, tsId: str, ext: str = ST_EXT) -> str:
+        return self.getTmpFile(tsId, ext, suf=EVEN)
+
+    def getOddTsTmpFile(self, tsId: str, ext: str = ST_EXT) -> str:
+        return self.getTmpFile(tsId, ext, suf=ODD)
+
+    def getTsTmpFile(self, tsId: str, ext: str = ST_EXT) -> str:
+        return self.getTmpFile(tsId, ext)
 
     def getWorkingDirName(self, tsId):
         return self._getTmpPath(tsId)

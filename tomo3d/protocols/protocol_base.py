@@ -64,6 +64,11 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.objDict = None  # {tsId: obj}, where obj can be a TS or a tomogram
+        self.itemTsIdReadList = []
+
+    @classmethod
+    def worksInStreaming(cls):
+        return True
 
     def _defineParams(self, form):
         pass
@@ -109,13 +114,14 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
     # --------------------------- INFO functions --------------------------------------------
 
     # --------------------------- UTILS functions --------------------------------------------
-    @staticmethod
-    def getTsFiles(tsFolder, tsId):
-        """Returns the path of the Tilt Serie and the angles files"""
-        prefix = join(tsFolder, tsId)
-        TsPath = prefix + '.st'
-        AnglesPath = prefix + '.rawtlt'
-        return TsPath, AnglesPath
+    def readingOutput(self) -> None:
+        outTomoSet = getattr(self, self._OUTNAME, None)
+        if outTomoSet:
+            for item in outTomoSet:
+                self.itemTsIdReadList.append(item.getTsId())
+            self.info(cyanStr(f'TsIds processed: {self.itemTsIdReadList}'))
+        else:
+            self.info(cyanStr('No elements have been processed yet'))
 
     def getTmpFile(self, tsId: str, ext: str = ST_EXT, suf: str = '') -> str:
         baseName = tsId if not suf else f'{tsId}_{suf}'

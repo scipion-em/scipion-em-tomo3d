@@ -24,14 +24,18 @@
 # *
 # **************************************************************************
 import logging
+import typing
 
+from pyworkflow.object import Pointer
 from pyworkflow.protocol import STEPS_PARALLEL
-from pyworkflow.utils import Message
+from pyworkflow.utils import Message, cyanStr
+from tomo.objects import SetOfTomograms
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, PointerParam, GT
 from tomo3d.protocols.protocol_base import ProtBaseTomo3d
 
 logger = logging.getLogger(__name__)
+IN_TOMOS = 'inputSetTomograms'
 DENOISE_EED = 0
 DENOISE_BF = 1
 
@@ -60,10 +64,9 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
     def _defineParams(self, form):
         # First we customize the inputParticles param to fit our needs in this protocol
         form.addSection(label=Message.LABEL_INPUT)
-        form.addParam('inputSetTomograms', PointerParam, pointerClass='SetOfTomograms',
+        form.addParam(IN_TOMOS, PointerParam, pointerClass='SetOfTomograms',
                       label='Set Of Tomograms',
                       help='Set of tomograms that will be denoised.')
-        #self._insertBinThreadsParam(form)
         form.addParam('method', EnumParam,
                       choices=['Edge Enhancing Diffusion (EED)', 'BFlow'],
                       default=DENOISE_EED,
@@ -144,20 +147,37 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
         form.addParallelSection(threads=3, mpi=0, binThreads=2)
 
     # --------------------------- INSERT steps functions --------------------------------------------
-    def _insertAllSteps(self):
-        self._initialize()
-        stepIds = []
-        for tsId in self.objDict.keys():
-            denoiseId = self._insertFunctionStep(self.denoiseTomogramStep, tsId,
-                                                 prerequisites=[],
-                                                 needsGPU=False)
-            outStepId = self._insertFunctionStep(self.createOutputStep, tsId,
-                                                 prerequisites=denoiseId,
-                                                 needsGPU=False)
-            stepIds.append(outStepId)
-        self._insertFunctionStep(self.closeOutputSetsStep,
-                                 prerequisites=stepIds,
-                                 needsGPU=False)
+    def stepsGeneratorStep(self) -> None:
+        closeSetStepDeps = []
+        inTomoSet = self.getInputSet()
+        self.readingOutput()
+
+        while True:
+            listInTsIds = inTomoSet.getTSIds()
+            if not inTomoSet.isStreamOpen() and self.itemTsIdReadList == listInTsIds:
+                logger.info(cyanStr('Input set closed.\n'))
+                self._insertFunctionStep(self.closeOutputSetsStep,
+                                         prerequisites=closeSetStepDeps,
+                                         needsGPU=False)
+                break
+            closeSetStepDeps = []
+            for tomo in inTomoSet.iterItems():
+                tsId = tomo.getTsId()
+
+    # def _insertAllSteps(self):
+    #     self._initialize()
+    #     stepIds = []
+    #     for tsId in self.objDict.keys():
+    #         denoiseId = self._insertFunctionStep(self.denoiseTomogramStep, tsId,
+    #                                              prerequisites=[],
+    #                                              needsGPU=False)
+    #         outStepId = self._insertFunctionStep(self.createOutputStep, tsId,
+    #                                              prerequisites=denoiseId,
+    #                                              needsGPU=False)
+    #         stepIds.append(outStepId)
+    #     self._insertFunctionStep(self.closeOutputSetsStep,
+    #                              prerequisites=stepIds,
+    #                              needsGPU=False)
 
     # --------------------------- STEPS functions --------------------------------------------
     def _initialize(self):
@@ -178,6 +198,10 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
         return ['Fernandez2018_tomoeed', 'Fernandez2009_tomobflow']
 
     # --------------------------- UTILS functions --------------------------------------------
+    def getInputSet(self, pointer: bool = False) -> typing.Union[Pointer, SetOfTomograms]:
+        tsPointer = getattr(self, IN_TOMOS)
+        return tsPointer if pointer else tsPointer.get()
+
     def call_BFlow(self, tsId):
         """Denoises de tomogram using the AND method"""
         params = '-g {} -i {} -s {} -t {}'.format(self.SigmaGaussian.get(), self.nIterBflow.get(),

@@ -24,8 +24,12 @@
 # *
 # **************************************************************************
 import logging
+import time
+import typing
 
-from pyworkflow.protocol import STEPS_PARALLEL
+from pyworkflow.object import Pointer
+from pyworkflow.protocol import ProtStreamingBase
+from tomo.objects import SetOfTiltSeries
 from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD, DO_EVEN_ODD, RAWTLT_EXT
 from pyworkflow.utils import makePath, Message, cyanStr
 from tomo3d import Plugin
@@ -33,13 +37,14 @@ from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_AD
     GT
 
 logger = logging.getLogger(__name__)
+IN_TS_SET = 'inputSetOfTiltSeries'
 
 # Reconstruction methods
 WBP = 0
 SIRT = 1
 
 
-class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
+class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
     """ Reconstruct tomograms using TOMO3D from
     Software from: https://sites.google.com/site/3demimageprocessing/
 
@@ -51,7 +56,6 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
     of processing time, in the order of a few seconds with WBP or minutes with SIRT.
     """
     _label = 'reconstruct tomogram'
-    stepsExecutionMode = STEPS_PARALLEL
 
     def __init__(self, **args):
         super().__init__(**args)
@@ -94,13 +98,13 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
                            ' would turn off the Hamming filter. Values in-between would '
                            ' preserve low-frequency components and modulate the contribution '
                            ' of the other frequency components')
-        form.addParallelSection(threads=3, mpi=0, binThreads=2)
+        form.addParallelSection(threads=2, mpi=0, binThreads=4)
 
     @staticmethod
     def _defineInputParams(form):
         # First we customize the inputParticles param to fit our needs in this protocol
         form.addSection(label=Message.LABEL_INPUT)
-        form.addParam('inputSetOfTiltSeries', PointerParam,
+        form.addParam(IN_TS_SET, PointerParam,
                       important=True,
                       pointerClass='SetOfTiltSeries',
                       label='Tilt series',
@@ -163,36 +167,48 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         line.addParam('finSlice', IntParam, default=0, validators=[GE(0)], label='Final')
 
     # --------------------------- INSERT steps functions --------------------------------------------
-    def _insertAllSteps(self):
-        self._initialize()
-        stepIds = []
-        for tsId in self.objDict.keys():
-            convertId = self._insertFunctionStep(self.convertInputStep, tsId,
-                                                 prerequisites=[],
-                                                 needsGPU=False)
-            recId = self._insertFunctionStep(self.reconstructTomogramStep, tsId,
-                                             prerequisites=convertId,
-                                             needsGPU=False)
-            createOutputId = self._insertFunctionStep(self.createOutputStep, tsId,
+    def stepsGeneratorStep(self) -> None:
+        closeSetStepDeps = []
+        inTsSet = self.getInputSet()
+        self.readingOutput()
+
+        while True:
+            listInTsIds = inTsSet.getTSIds()
+            if not inTsSet.isStreamOpen() and self.itemTsIdReadList == listInTsIds:
+                logger.info(cyanStr('Input set closed.\n'))
+                self._insertFunctionStep(self._closeOutputSet,
+                                         prerequisites=closeSetStepDeps,
+                                         needsGPU=False)
+                break
+            closeSetStepDeps = []
+            for ts in inTsSet.iterItems():
+                tsId = ts.getTsId()
+                if tsId not in self.itemTsIdReadList:
+                    cInputId = self._insertFunctionStep(self.convertInputStep, tsId,
+                                                        prerequisites=[],
+                                                        needsGPU=False)
+                    recId = self._insertFunctionStep(self.reconstructTomogramStep, tsId,
+                                                     prerequisites=cInputId,
+                                                     needsGPU=False)
+                    cOutId = self._insertFunctionStep(self.createOutputStep, tsId,
                                                       prerequisites=recId,
                                                       needsGPU=False)
-            stepIds.append(createOutputId)
-        self._insertFunctionStep(self.closeOutputSetsStep,
-                                 prerequisites=stepIds,
-                                 needsGPU=False)
+                    closeSetStepDeps.append(cOutId)
+                    logger.info(cyanStr(f"Steps created for tsId = {tsId}"))
+                    self.itemTsIdReadList.append(tsId)
+                time.sleep(10)
+                if inTsSet.isStreamOpen():
+                    inTsSet.loadAllProperties()  # refresh status for the streaming
 
     # --------------------------- STEPS functions --------------------------------------------
-    def _initialize(self):
-        self.objDict = {ts.getTsId(): ts.clone(ignoreAttrs=[]) for ts in self.inputSetOfTiltSeries.get()}
-
-    def convertInputStep(self, tsId):
+    def convertInputStep(self, tsId: str):
         logger.info(cyanStr(f'tsId = {tsId}: converting the inputs...'))
         makePath(self.getWorkingDirName(tsId), self._getTsExtraDir(tsId))
         tsTmpFile = self.getTsTmpFile(tsId)
         tsEvenTmpFile = self.getEvenTsTmpFile(tsId)
         tsOddTmpFile = self.getOddTsTmpFile(tsId)
         tltTmpFile = self.getTsTmpFile(tsId, ext=RAWTLT_EXT)
-        ts = self.objDict[tsId]
+        ts = self.getCurrentItem(self.getInputSet(), tsId)
         rotationAngle = ts.getAcquisition().getTiltAxisAngle()
         # Check if rotation angle is greater than 45º. If so,
         # swap x and y dimensions to adapt output image sizes to
@@ -212,7 +228,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
                               presentAcqOrders=presentAcqOrders)
         ts.generateTltFile(tltTmpFile)
 
-    def reconstructTomogramStep(self, tsId):
+    def reconstructTomogramStep(self, tsId: str):
         params = ''
         if self.method.get() == SIRT:
             params += f' -S -l {self.nIterations.get()}'
@@ -224,7 +240,6 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
             if self.height.get() != 0:
                 params += f' -z {self.height.get()}'
 
-        msg = f'{tsId}: Reconstructing the tomogram'
         tomoRecInfoDict = {'': self.getTsTmpFile(tsId)}  # {suffix: fileName}
         tltTmpFile = self.getTsTmpFile(tsId, ext=RAWTLT_EXT)
         if self.doEvenOdd.get():
@@ -233,7 +248,6 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
 
         for suffix, inFile in tomoRecInfoDict.items():
             logger.info(cyanStr(f'tsId = {tsId}: reconstructing the tomogram {suffix.upper()}...'))
-            logger.info(f'{msg} {suffix}')
             outFile = self._getTmpTomoOutFName(tsId, suffix=suffix)
             args = f'-i {inFile} -a {tltTmpFile} -o {outFile} -t {self.binThreads.get()}'
             args += params
@@ -259,6 +273,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d):
         return ['Fernandez2010_tomo3d', 'Fernandez2015_tomo3d']
 
 # --------------------------- UTILS functions --------------------------------------------
-    def getInputSet(self):
-        return self.inputSetOfTiltSeries.get()
+    def getInputSet(self, pointer: bool = False) -> typing.Union[Pointer, SetOfTiltSeries]:
+        tsSetPointer = getattr(self, IN_TS_SET)
+        return tsSetPointer if pointer else tsSetPointer.get()
 

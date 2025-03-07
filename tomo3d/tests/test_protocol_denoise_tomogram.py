@@ -74,8 +74,7 @@ class TestTomoDenoising(TestBaseCentralizedLayer):
         print(magentaStr(f"\n==> Denoising the tomograms using the method {denoisingStr}:"))
         protDenosing = cls.newProtocol(ProtTomo3dProtDenoiseTomogram,
                                        inputSetTomograms=cls.importedTomos,
-                                       method=denosingMethod,
-                                       numberOfThreads=8)
+                                       method=denosingMethod)
         cls.launchProtocol(protDenosing)
         protDenosing.setObjLabel(denoisingStr)
         return getattr(protDenosing, outputTomo3dObjects.tomograms.name, None)

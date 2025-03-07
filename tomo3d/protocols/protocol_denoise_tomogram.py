@@ -24,11 +24,11 @@
 # *
 # **************************************************************************
 import logging
+import time
 import typing
-
 from pyworkflow.object import Pointer
-from pyworkflow.protocol import STEPS_PARALLEL
-from pyworkflow.utils import Message, cyanStr
+from pyworkflow.protocol import ProtStreamingBase
+from pyworkflow.utils import Message, cyanStr, makePath
 from tomo.objects import SetOfTomograms
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, PointerParam, GT
@@ -36,11 +36,13 @@ from tomo3d.protocols.protocol_base import ProtBaseTomo3d
 
 logger = logging.getLogger(__name__)
 IN_TOMOS = 'inputSetTomograms'
+
+#Denoising methods
 DENOISE_EED = 0
 DENOISE_BF = 1
 
 
-class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
+class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
     """ Denoises sets of tomograms using methods described in https://sites.google.com/site/3demimageprocessing/
     Two methods are available: \n
     _TomoAND (also known as TomoEED)_ is an optimized program for denoising tomographic volumes with
@@ -55,7 +57,6 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
       in terms of memory requirements.
     """
     _label = 'denoise tomogram'
-    stepsExecutionMode = STEPS_PARALLEL
 
     def __init__(self, **args):
         super().__init__(**args)
@@ -144,7 +145,7 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
                            ' range [0.1,0.15]. The larger the time step, the lower the '
                            ' number of iterations needed.',
                       expertLevel=LEVEL_ADVANCED)
-        form.addParallelSection(threads=3, mpi=0, binThreads=2)
+        form.addParallelSection(threads=2, mpi=0, binThreads=4)
 
     # --------------------------- INSERT steps functions --------------------------------------------
     def stepsGeneratorStep(self) -> None:
@@ -156,42 +157,36 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
             listInTsIds = inTomoSet.getTSIds()
             if not inTomoSet.isStreamOpen() and self.itemTsIdReadList == listInTsIds:
                 logger.info(cyanStr('Input set closed.\n'))
-                self._insertFunctionStep(self.closeOutputSetsStep,
+                self._insertFunctionStep(self._closeOutputSet,
                                          prerequisites=closeSetStepDeps,
                                          needsGPU=False)
                 break
             closeSetStepDeps = []
             for tomo in inTomoSet.iterItems():
                 tsId = tomo.getTsId()
-
-    # def _insertAllSteps(self):
-    #     self._initialize()
-    #     stepIds = []
-    #     for tsId in self.objDict.keys():
-    #         denoiseId = self._insertFunctionStep(self.denoiseTomogramStep, tsId,
-    #                                              prerequisites=[],
-    #                                              needsGPU=False)
-    #         outStepId = self._insertFunctionStep(self.createOutputStep, tsId,
-    #                                              prerequisites=denoiseId,
-    #                                              needsGPU=False)
-    #         stepIds.append(outStepId)
-    #     self._insertFunctionStep(self.closeOutputSetsStep,
-    #                              prerequisites=stepIds,
-    #                              needsGPU=False)
+                if tsId not in self.itemTsIdReadList:
+                    cInputId = self._insertFunctionStep(self.denoiseTomogramStep, tsId,
+                                                        prerequisites=[],
+                                                        needsGPU=False)
+                    cOutId = self._insertFunctionStep(self.createOutputStep, tsId,
+                                                      prerequisites=cInputId,
+                                                      needsGPU=False)
+                    closeSetStepDeps.append(cOutId)
+                    logger.info(cyanStr(f"Steps created for tsId = {tsId}"))
+                    self.itemTsIdReadList.append(tsId)
+                time.sleep(10)
+                if inTomoSet.isStreamOpen():
+                    inTomoSet.loadAllProperties()  # refresh status for the streaming
 
     # --------------------------- STEPS functions --------------------------------------------
-    def _initialize(self):
-        self.objDict = {tomo.getTsId(): tomo.clone() for tomo in self.inputSetTomograms.get()}
-
-    def denoiseTomogramStep(self, tsId):
-        # We start preparing writing those elements we're using as input to keep them untouched
+    def denoiseTomogramStep(self, tsId: str):
+        makePath(self._getTsExtraDir(tsId))
         if self.method.get() == DENOISE_EED:
-            logger.info('Denoising by Edge Enhancing Diffusion')
-            self.call_EED(tsId)
-
+            logger.info(cyanStr(f'tsId = {tsId}: denoising by Edge Enhancing Diffusion...'))
+            self.runEED(tsId)
         else:  # self.method.get() == DENOISE_BF:
-            logger.info('Denoising by BFlow')
-            self.call_BFlow(tsId)
+            logger.info(cyanStr(f'tsId = {tsId}: denoising by BFlow...'))
+            self.runBflow(tsId)
 
     # --------------------------- INFO functions --------------------------------------------
     def _citations(self):
@@ -199,30 +194,36 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d):
 
     # --------------------------- UTILS functions --------------------------------------------
     def getInputSet(self, pointer: bool = False) -> typing.Union[Pointer, SetOfTomograms]:
-        tsPointer = getattr(self, IN_TOMOS)
-        return tsPointer if pointer else tsPointer.get()
+        tomoSetPointer = getattr(self, IN_TOMOS)
+        return tomoSetPointer if pointer else tomoSetPointer.get()
 
-    def call_BFlow(self, tsId):
-        """Denoises de tomogram using the AND method"""
-        params = '-g {} -i {} -s {} -t {}'.format(self.SigmaGaussian.get(), self.nIterBflow.get(),
-                                                  self.TimeStepBflow.get(), self.binThreads.get())
-        outTomoFile = self._getOutTomoFile(tsId)
-        args = '{} {} {}'.format(params, self.objDict[tsId].getFileName(), outTomoFile)
+    def runBflow(self, tsId: str):
+        """Denoises de tomogram using the BFlow method"""
+        params = self.getCommonParamsCmd(tsId)
+        params.append(f'-i {self.nIterBflow.get()}')
+        args = ' '.join(params)
         self.runJob(Plugin.getTomoBFlowProgram(), args)
 
-    def call_EED(self, tsId):
-        """Denoises de tomogram using the AND method"""
-        if self.Lambda.get() < 0:
-            params = '-g {} -i {} -s {}'.format(self.SigmaGaussian.get(), self.nIter.get(), self.TimeStep.get())
-        else:
-            params = '-g {} -i {} -s {} -k {}'.format(self.SigmaGaussian.get(), self.nIter.get(),
-                                                      self.TimeStep.get(), self.Lambda.get())
-        outTomoFile = self._getOutTomoFile(tsId)
-        args = '{} {} {}'.format(params, self.objDict[tsId].getFileName(), outTomoFile)
+    def runEED(self, tsId: str):
+        """Denoises de tomogram using the EED method"""
+        params = self.getCommonParamsCmd(tsId)
+        params.append(f'-i {self.nIter.get()}')
+        if self.Lambda.get() >= 0:
+            params.append(f'-k {self.Lambda.get()}')
+        args = ' '.join(params)
         self.runJob(Plugin.getTomoEEDProgram(), args)
 
-    def _getOutTomoFile(self, tsId):
-        return self._getExtraPath(tsId + '.mrc')
+    def getCommonParamsCmd(self, tsId: str) -> typing.List[str]:
+        tomo = self.getCurrentItem(self.getInputSet(), tsId)
+        inTomoFile = tomo.getFileName()
+        outTomoFile = self._getOutTomoFile(tsId)
+        params = [
+            f'{inTomoFile}',
+            f'{outTomoFile}'
+            f' -g {self.SigmaGaussian.get()}',
+            f'-s {self.TimeStep.get()}',
+            f'-t {self.binThreads.get()}'
+        ]
+        return params
 
-    def getInputSet(self):
-        return self.inputSetTomograms.get()
+

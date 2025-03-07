@@ -26,13 +26,16 @@
 import logging
 from enum import Enum
 from os.path import join
+from typing import Union
+
 import mrcfile
 import numpy as np
 from pyworkflow.object import Set, Boolean
+from pyworkflow.protocol import STEPS_PARALLEL
 from pyworkflow.utils import cyanStr
 from tomo.protocols import ProtTomoBase
 from pwem.protocols import EMProtocol
-from tomo.objects import Tomogram, SetOfTomograms
+from tomo.objects import Tomogram, SetOfTomograms, SetOfTiltSeries, TiltSeries
 
 logger = logging.getLogger(__name__)
 
@@ -59,25 +62,43 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
     """
     _OUTNAME = outputTomo3dObjects.tomograms.name
     _possibleOutputs = {_OUTNAME: SetOfTomograms}
+    stepsExecutionMode = STEPS_PARALLEL
 
     # --------------------------- DEFINE param functions --------------------------------------------
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.objDict = None  # {tsId: obj}, where obj can be a TS or a tomogram
         self.itemTsIdReadList = []
 
     @classmethod
     def worksInStreaming(cls):
         return True
 
-    def _defineParams(self, form):
-        pass
-
     # --------------------------- INSERT steps functions --------------------------------------------
-    def _insertAllSteps(self):
-        pass
+    def createOutputStep(self, tsId: str):
+        with self._lock:
+            inSet = self.getInputSet()
+            inObj = self.getCurrentItem(inSet, tsId, doLock=False)
+            acq = inObj.getAcquisition().clone()
+            outputTomos = self._getOutputSetOfTomograms()
+            tomo = Tomogram()
+            tomo.setTsId(tsId)
+            tomo.setFileName(self._getOutTomoFile(tsId))
+            tomo.setSamplingRate(inObj.getSamplingRate())
+            tomo.setAcquisition(acq)
+            tomo.setOrigin()
+            if getattr(self, DO_EVEN_ODD, Boolean(False)).get():
+                tomo.setHalfMaps([self._getOutTomoFile(tsId, suffix=EVEN), self._getOutTomoFile(tsId, suffix=ODD)])
+            outputTomos.append(tomo)
+            outputTomos.update(tomo)
+            outputTomos.write()
+            self._store(outputTomos)
 
-    def rotXTomo(self, tsId, suffix=''):
+    # --------------------------- INFO functions --------------------------------------------
+
+    # --------------------------- UTILS functions --------------------------------------------
+    def rotXTomo(self,
+                 tsId: str,
+                 suffix: str = '') -> None:
         """Result of the reconstruction must be rotated 90 degrees around the X
         axis to recover the original orientation (due to tomo3d design)"""
         logger.info(cyanStr(f'tsId = {tsId}: rotating the tomogram {suffix.upper()}...'))
@@ -90,30 +111,6 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
         with mrcfile.mmap(outTomoFile, mode='w+') as mrc:
             mrc.set_data(rotData)
 
-    def createOutputStep(self, tsId):
-        with self._lock:
-            obj = self.objDict[tsId]
-            acq = obj.getAcquisition().clone()
-            outputTomos = self._getOutputSetOfTomograms()
-            tomo = Tomogram()
-            tomo.setTsId(obj.getTsId())
-            tomo.setLocation(self._getOutTomoFile(tsId))
-            tomo.setSamplingRate(obj.getSamplingRate())
-            tomo.setAcquisition(acq)
-            tomo.setOrigin()
-            if getattr(self, DO_EVEN_ODD, Boolean(False)).get():
-                tomo.setHalfMaps([self._getOutTomoFile(tsId, suffix=EVEN), self._getOutTomoFile(tsId, suffix=ODD)])
-            outputTomos.append(tomo)
-            outputTomos.update(tomo)
-            outputTomos.write()
-            self._store(outputTomos)
-
-    def closeOutputSetsStep(self):
-        self._closeOutputSet()
-
-    # --------------------------- INFO functions --------------------------------------------
-
-    # --------------------------- UTILS functions --------------------------------------------
     def readingOutput(self) -> None:
         outTomoSet = getattr(self, self._OUTNAME, None)
         if outTomoSet:
@@ -123,24 +120,33 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
         else:
             self.info(cyanStr('No elements have been processed yet'))
 
-    def getTmpFile(self, tsId: str, ext: str = ST_EXT, suf: str = '') -> str:
+    def getTmpFile(self,
+                   tsId: str,
+                   ext: str = ST_EXT,
+                   suf: str = '') -> str:
         baseName = tsId if not suf else f'{tsId}_{suf}'
         ext = ext if ext.startswith('.') else f'.{ext}'
         return self._getTmpPath(f'{baseName}{ext}')
 
-    def getEvenTsTmpFile(self, tsId: str, ext: str = ST_EXT) -> str:
+    def getEvenTsTmpFile(self,
+                         tsId: str,
+                         ext: str = ST_EXT) -> str:
         return self.getTmpFile(tsId, ext, suf=EVEN)
 
-    def getOddTsTmpFile(self, tsId: str, ext: str = ST_EXT) -> str:
+    def getOddTsTmpFile(self,
+                        tsId: str,
+                        ext: str = ST_EXT) -> str:
         return self.getTmpFile(tsId, ext, suf=ODD)
 
-    def getTsTmpFile(self, tsId: str, ext: str = ST_EXT) -> str:
+    def getTsTmpFile(self,
+                     tsId: str,
+                     ext: str = ST_EXT) -> str:
         return self.getTmpFile(tsId, ext)
 
-    def getWorkingDirName(self, tsId):
+    def getWorkingDirName(self, tsId: str) -> str:
         return self._getTmpPath(tsId)
 
-    def _getOutputSetOfTomograms(self):
+    def _getOutputSetOfTomograms(self) -> SetOfTomograms:
         outTomograms = getattr(self, outputTomo3dObjects.tomograms.name, None)
         if outTomograms:
             outTomograms.enableAppend()
@@ -156,21 +162,36 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
 
         return tomograms
 
-    def _getOutTomoFile(self, tsId, suffix=None):
+    def _getOutTomoFile(self,
+                        tsId: str,
+                        suffix: str='') -> str:
         return join(self._getTsExtraDir(tsId), f'{tsId}{self._manageSuffix(suffix)}.mrc')
 
-    def _getTmpTomoOutFName(self, tsId, suffix=None):
+    def _getTmpTomoOutFName(self,
+                            tsId: str,
+                            suffix: str='') -> str:
         return join(self._getTsTmpDir(tsId), f'{tsId}{self._manageSuffix(suffix)}.mrc')
 
     @staticmethod
-    def _manageSuffix(suffix):
+    def _manageSuffix(suffix: str) -> str:
         return f'_{suffix}' if suffix else ''
 
-    def _getTsTmpDir(self, tsId):
+    def _getTsTmpDir(self, tsId: str) -> str:
         return self._getTmpPath(tsId)
 
-    def _getTsExtraDir(self, tsId):
+    def _getTsExtraDir(self, tsId: str) -> str:
         return self._getExtraPath(tsId)
 
-    def getInputSet(self):
+    def getCurrentItem(self,
+                       inSet: Union[SetOfTomograms, SetOfTiltSeries],
+                       tsId: str,
+                       doLock: bool = True) -> Union[Tomogram, TiltSeries]:
+        if doLock:
+            with self._lock:
+                return inSet.getItem(Tomogram.TS_ID_FIELD, tsId)
+        else:
+            return inSet.getItem(Tomogram.TS_ID_FIELD, tsId)
+
+    def getInputSet(self, pointer: bool = False) -> Union[SetOfTomograms, SetOfTiltSeries]:
+        # To be defined by the subclasses
         pass

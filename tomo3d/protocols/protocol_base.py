@@ -151,18 +151,16 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
         return self._getTmpPath(tsId)
 
     def _getOutputSetOfTomograms(self) -> SetOfTomograms:
-        outTomograms = getattr(self, outputTomo3dObjects.tomograms.name, None)
+        outTomograms = getattr(self, self._OUTNAME, None)
         if outTomograms:
             outTomograms.enableAppend()
         else:
-            inSet = self.getInputSet()
+            inSetPointer = self.getInputSet(pointer=True)
             outTomograms = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
-            outTomograms.copyInfo(inSet)
+            outTomograms.copyInfo(inSetPointer.get())
             outTomograms.setStreamState(Set.STREAM_OPEN)
-            setattr(self, outputTomo3dObjects.tomograms.name, outTomograms)
             self._defineOutputs(**{self._OUTNAME: outTomograms})
-            self._defineSourceRelation(inSet, outTomograms)
-
+            self._defineSourceRelation(inSetPointer, outTomograms)
         return outTomograms
 
     def _getOutTomoFile(self,

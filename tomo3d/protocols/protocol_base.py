@@ -92,6 +92,10 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
             outputTomos.update(tomo)
             outputTomos.write()
             self._store(outputTomos)
+            for outputName in self._possibleOutputs.keys():
+                output = getattr(self, outputName, None)
+                if output:
+                    output.close()
 
     # --------------------------- INFO functions --------------------------------------------
 
@@ -150,17 +154,16 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
         outTomograms = getattr(self, outputTomo3dObjects.tomograms.name, None)
         if outTomograms:
             outTomograms.enableAppend()
-            tomograms = outTomograms
         else:
             inSet = self.getInputSet()
-            tomograms = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
-            tomograms.copyInfo(inSet)
-            tomograms.setStreamState(Set.STREAM_OPEN)
-            setattr(self, outputTomo3dObjects.tomograms.name, tomograms)
-            self._defineOutputs(**{self._OUTNAME: tomograms})
-            self._defineSourceRelation(inSet, tomograms)
+            outTomograms = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
+            outTomograms.copyInfo(inSet)
+            outTomograms.setStreamState(Set.STREAM_OPEN)
+            setattr(self, outputTomo3dObjects.tomograms.name, outTomograms)
+            self._defineOutputs(**{self._OUTNAME: outTomograms})
+            self._defineSourceRelation(inSet, outTomograms)
 
-        return tomograms
+        return outTomograms
 
     def _getOutTomoFile(self,
                         tsId: str,

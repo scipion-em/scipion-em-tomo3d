@@ -161,7 +161,6 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
                                          prerequisites=closeSetStepDeps,
                                          needsGPU=False)
                 break
-            closeSetStepDeps = []
             for tomo in inTomoSet.iterItems():
                 tsId = tomo.getTsId()
                 if tsId not in self.itemTsIdReadList:
@@ -174,9 +173,9 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
                     closeSetStepDeps.append(cOutId)
                     logger.info(cyanStr(f"Steps created for tsId = {tsId}"))
                     self.itemTsIdReadList.append(tsId)
-                time.sleep(10)
-                if inTomoSet.isStreamOpen():
-                    inTomoSet.loadAllProperties()  # refresh status for the streaming
+            time.sleep(10)
+            if inTomoSet.isStreamOpen():
+                inTomoSet.loadAllProperties()  # refresh status for the streaming
 
     # --------------------------- STEPS functions --------------------------------------------
     def denoiseTomogramStep(self, tsId: str):

@@ -180,7 +180,6 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
                                          prerequisites=closeSetStepDeps,
                                          needsGPU=False)
                 break
-            closeSetStepDeps = []
             for ts in inTsSet.iterItems():
                 tsId = ts.getTsId()
                 if tsId not in self.itemTsIdReadList:
@@ -196,9 +195,9 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
                     closeSetStepDeps.append(cOutId)
                     logger.info(cyanStr(f"Steps created for tsId = {tsId}"))
                     self.itemTsIdReadList.append(tsId)
-                time.sleep(10)
-                if inTsSet.isStreamOpen():
-                    inTsSet.loadAllProperties()  # refresh status for the streaming
+            time.sleep(10)
+            if inTsSet.isStreamOpen():
+                inTsSet.loadAllProperties()  # refresh status for the streaming
 
     # --------------------------- STEPS functions --------------------------------------------
     def convertInputStep(self, tsId: str):

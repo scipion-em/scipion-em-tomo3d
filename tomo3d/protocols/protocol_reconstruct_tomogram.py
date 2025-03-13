@@ -98,7 +98,8 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
                            ' would turn off the Hamming filter. Values in-between would '
                            ' preserve low-frequency components and modulate the contribution '
                            ' of the other frequency components')
-        form.addParallelSection(threads=2, mpi=0, binThreads=4)
+        self._insertBinThreadsParam(form)
+        form.addParallelSection(threads=2, mpi=0)
 
     @staticmethod
     def _defineInputParams(form):
@@ -197,15 +198,14 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
                     self.itemTsIdReadList.append(tsId)
             time.sleep(10)
             if inTsSet.isStreamOpen():
-                inTsSet.loadAllProperties()  # refresh status for the streaming
+                with self._lock:
+                    inTsSet.loadAllProperties()  # refresh status for the streaming
 
     # --------------------------- STEPS functions --------------------------------------------
     def convertInputStep(self, tsId: str):
         logger.info(cyanStr(f'tsId = {tsId}: converting the inputs...'))
         makePath(self.getWorkingDirName(tsId), self._getTsExtraDir(tsId))
         tsTmpFile = self.getTsTmpFile(tsId)
-        tsEvenTmpFile = self.getEvenTsTmpFile(tsId)
-        tsOddTmpFile = self.getOddTsTmpFile(tsId)
         tltTmpFile = self.getTsTmpFile(tsId, ext=RAWTLT_EXT)
         ts = self.getCurrentItem(self.getInputSet(), tsId)
         rotationAngle = ts.getAcquisition().getTiltAxisAngle()
@@ -217,6 +217,8 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
             swapXY = True
         presentAcqOrders = ts.getTsPresentAcqOrders()
         if self.doEvenOdd.get():
+            tsEvenTmpFile = self.getEvenTsTmpFile(tsId)
+            tsOddTmpFile = self.getOddTsTmpFile(tsId)
             ts.applyTransformToAll(tsTmpFile,
                                    swapXY=swapXY,
                                    presentAcqOrders=presentAcqOrders,

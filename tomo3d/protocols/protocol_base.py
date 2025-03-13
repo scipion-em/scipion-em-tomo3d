@@ -31,7 +31,7 @@ from typing import Union
 import mrcfile
 import numpy as np
 from pyworkflow.object import Set, Boolean
-from pyworkflow.protocol import STEPS_PARALLEL
+from pyworkflow.protocol import STEPS_PARALLEL, IntParam
 from pyworkflow.utils import cyanStr
 from tomo.protocols import ProtTomoBase
 from pwem.protocols import EMProtocol
@@ -72,6 +72,17 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
     @classmethod
     def worksInStreaming(cls):
         return True
+
+    @staticmethod
+    def _insertBinThreadsParam(form):
+        form.addParam('binThreads', IntParam,
+                      label='threads',
+                      default=4,
+                      help='Number of threads used by tomo3d each time it is called in the protocol execution. For '
+                           'example, if 2 Scipion threads and 3 tomo3d threads are set, the tomograms will be '
+                           'processed in groups of 2 at the same time with a call of tomo3d with 3 threads each, so '
+                           '6 threads will be used at the same time. Beware the memory of your machine has '
+                           'memory enough to load together the number of tomograms specified by Scipion threads.')
 
     # --------------------------- INSERT steps functions --------------------------------------------
     def createOutputStep(self, tsId: str):

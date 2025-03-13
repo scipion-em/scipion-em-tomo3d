@@ -145,7 +145,8 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
                            ' range [0.1,0.15]. The larger the time step, the lower the '
                            ' number of iterations needed.',
                       expertLevel=LEVEL_ADVANCED)
-        form.addParallelSection(threads=2, mpi=0, binThreads=4)
+        self._insertBinThreadsParam(form)
+        form.addParallelSection(threads=2, mpi=0)
 
     # --------------------------- INSERT steps functions --------------------------------------------
     def stepsGeneratorStep(self) -> None:
@@ -175,7 +176,8 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
                     self.itemTsIdReadList.append(tsId)
             time.sleep(10)
             if inTomoSet.isStreamOpen():
-                inTomoSet.loadAllProperties()  # refresh status for the streaming
+                with self._lock:
+                    inTomoSet.loadAllProperties()  # refresh status for the streaming
 
     # --------------------------- STEPS functions --------------------------------------------
     def denoiseTomogramStep(self, tsId: str):

@@ -68,6 +68,7 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.itemTsIdReadList = []
+        self.failedItems = []
 
     @classmethod
     def worksInStreaming(cls):

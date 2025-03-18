@@ -27,17 +27,18 @@ import logging
 import time
 import typing
 
-from pyworkflow.object import Pointer
+from pyworkflow.object import Pointer, Set
 from pyworkflow.protocol import ProtStreamingBase
-from tomo.objects import SetOfTiltSeries
+from tomo.objects import SetOfTiltSeries, TiltSeries
 from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD, DO_EVEN_ODD, RAWTLT_EXT
-from pyworkflow.utils import makePath, Message, cyanStr
+from pyworkflow.utils import makePath, Message, cyanStr, redStr
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, FloatParam, LEVEL_ADVANCED, BooleanParam, PointerParam, GE, \
     GT
 
 logger = logging.getLogger(__name__)
 IN_TS_SET = 'inputSetOfTiltSeries'
+OUTPUT_TS_FAILED_NAME = "FailedTiltSeries"
 
 # Reconstruction methods
 WBP = 0
@@ -230,30 +231,45 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
         ts.generateTltFile(tltTmpFile)
 
     def reconstructTomogramStep(self, tsId: str):
-        params = ''
-        if self.method.get() == SIRT:
-            params += f' -S -l {self.nIterations.get()}'
-        if self.setShape.get():
-            if self.width.get() != 0:
-                params += f' -x {self.width.get()}'
-            if self.finSlice.get() != 0:
-                params += f' -y {self.iniSlice.get()},{self.finSlice.get()}'
-            if self.height.get() != 0:
-                params += f' -z {self.height.get()}'
+        try:
+            params = ''
+            if self.method.get() == SIRT:
+                params += f' -S -l {self.nIterations.get()}'
+            if self.setShape.get():
+                if self.width.get() != 0:
+                    params += f' -x {self.width.get()}'
+                if self.finSlice.get() != 0:
+                    params += f' -y {self.iniSlice.get()},{self.finSlice.get()}'
+                if self.height.get() != 0:
+                    params += f' -z {self.height.get()}'
 
-        tomoRecInfoDict = {'': self.getTsTmpFile(tsId)}  # {suffix: fileName}
-        tltTmpFile = self.getTsTmpFile(tsId, ext=RAWTLT_EXT)
-        if self.doEvenOdd.get():
-            tomoRecInfoDict[EVEN] = self.getEvenTsTmpFile(tsId)
-            tomoRecInfoDict[ODD] = self.getOddTsTmpFile(tsId)
+            tomoRecInfoDict = {'': self.getTsTmpFile(tsId)}  # {suffix: fileName}
+            tltTmpFile = self.getTsTmpFile(tsId, ext=RAWTLT_EXT)
+            if self.doEvenOdd.get():
+                tomoRecInfoDict[EVEN] = self.getEvenTsTmpFile(tsId)
+                tomoRecInfoDict[ODD] = self.getOddTsTmpFile(tsId)
 
-        for suffix, inFile in tomoRecInfoDict.items():
-            logger.info(cyanStr(f'tsId = {tsId}: reconstructing the tomogram {suffix.upper()}...'))
-            outFile = self._getTmpTomoOutFName(tsId, suffix=suffix)
-            args = f'-i {inFile} -a {tltTmpFile} -o {outFile} -t {self.binThreads.get()}'
-            args += params
-            self.runJob(Plugin.getTomo3dProgram(), args)
-            self.rotXTomo(tsId, suffix=suffix)
+            for suffix, inFile in tomoRecInfoDict.items():
+                logger.info(cyanStr(f'tsId = {tsId}: reconstructing the tomogram {suffix.upper()}...'))
+                outFile = self._getTmpTomoOutFName(tsId, suffix=suffix)
+                args = f'-i {inFile} -a {tltTmpFile} -o {outFile} -t {self.binThreads.get()}'
+                args += params
+                self.runJob(Plugin.getTomo3dProgram(), args)
+                self.rotXTomo(tsId, suffix=suffix)
+        except Exception as e:
+            self.failedItems.append(tsId)
+            logger.error(redStr(f'Tomo3d tomogram reconstruction execution failed for tsId {tsId} -> {e}'))
+
+    def createOutputStep(self, tsId: str):
+        if tsId in self.failedItems:
+            with self._lock:
+                inTs = self.getInputSet().getItem(TiltSeries.TS_ID_FIELD, tsId)
+                self.createOutputFailedSet(inTs)
+                failedTs = getattr(self, OUTPUT_TS_FAILED_NAME, None)
+                if failedTs:
+                    failedTs.close()
+        else:
+            super().createOutputStep(tsId)
 
     # --------------------------- INFO functions --------------------------------------------
     def _validate(self):
@@ -277,4 +293,39 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
     def getInputSet(self, pointer: bool = False) -> typing.Union[Pointer, SetOfTiltSeries]:
         tsSetPointer = getattr(self, IN_TS_SET)
         return tsSetPointer if pointer else tsSetPointer.get()
+
+    def createOutputFailedSet(self, item):
+        """ Just copy input item to the failed output set. """
+        logger.info(f'Failed TS ---> {item.getTsId()}')
+        inputSetPointer = self.getInputSet(pointer=True)
+        output = self.getOutputFailedSet(inputSetPointer)
+        newItem = item.clone()
+        newItem.copyInfo(item)
+        output.append(newItem)
+
+        if isinstance(item, TiltSeries):
+            newItem.copyItems(item)
+            newItem.write(properties=False)
+
+        output.update(newItem)
+        output.write()
+        self._store(output)
+
+    def getOutputFailedSet(self, inputPtr: Pointer):
+        """ Create output set for failed TS or tomograms. """
+        inputSet = inputPtr.get()
+        if isinstance(inputSet, SetOfTiltSeries):
+            failedTs = getattr(self, OUTPUT_TS_FAILED_NAME, None)
+
+            if failedTs:
+                failedTs.enableAppend()
+            else:
+                logger.info('Create the set of failed TS')
+                failedTs = SetOfTiltSeries.create(self._getPath(), template='tiltseries', suffix='Failed')
+                failedTs.copyInfo(inputSet)
+                failedTs.setStreamState(Set.STREAM_OPEN)
+                self._defineOutputs(**{OUTPUT_TS_FAILED_NAME: failedTs})
+                self._defineSourceRelation(inputPtr, failedTs)
+
+            return failedTs
 

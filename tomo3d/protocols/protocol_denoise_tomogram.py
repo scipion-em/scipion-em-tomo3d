@@ -28,7 +28,7 @@ import time
 import typing
 from pyworkflow.object import Pointer
 from pyworkflow.protocol import ProtStreamingBase
-from pyworkflow.utils import Message, cyanStr, makePath
+from pyworkflow.utils import Message, cyanStr, makePath, redStr
 from tomo.objects import SetOfTomograms
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, PointerParam, GT
@@ -181,13 +181,21 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
 
     # --------------------------- STEPS functions --------------------------------------------
     def denoiseTomogramStep(self, tsId: str):
-        makePath(self._getTsExtraDir(tsId))
-        if self.method.get() == DENOISE_EED:
-            logger.info(cyanStr(f'tsId = {tsId}: denoising by Edge Enhancing Diffusion...'))
-            self.runEED(tsId)
-        else:  # self.method.get() == DENOISE_BF:
-            logger.info(cyanStr(f'tsId = {tsId}: denoising by BFlow...'))
-            self.runBflow(tsId)
+        try:
+            makePath(self._getTsExtraDir(tsId))
+            if self.method.get() == DENOISE_EED:
+                logger.info(cyanStr(f'tsId = {tsId}: denoising by Edge Enhancing Diffusion...'))
+                self.runEED(tsId)
+            else:  # self.method.get() == DENOISE_BF:
+                logger.info(cyanStr(f'tsId = {tsId}: denoising by BFlow...'))
+                self.runBflow(tsId)
+        except Exception as e:
+            self.failedItems.append(tsId)
+            logger.error(redStr(f'Tomo3d denoising execution failed for tsId {tsId} -> {e}'))
+
+    def createOutputStep(self, tsId: str):
+        if tsId not in self.failedItems:
+            super().createOutputStep(tsId)
 
     # --------------------------- INFO functions --------------------------------------------
     def _citations(self):

@@ -134,8 +134,7 @@ class TestTomogramRec(TestBaseCentralizedLayer):
                                       inputSetOfTiltSeries=inTsSet,
                                       method=recMethod,
                                       height=cls.tomoWidth,
-                                      nIterations=10,
-                                      numberOfThreads=8)
+                                      nIterations=10)
         protTomoRec.setObjLabel(f'Tomo rec {method} {excViewsMsg}')
         cls.launchProtocol(protTomoRec)
         outTomos = getattr(protTomoRec, outputTomo3dObjects.tomograms.name, None)

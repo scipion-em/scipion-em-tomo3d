@@ -1,3 +1,10 @@
+v3.3.0:
+ Users:
+   - binThreads adapted to core change.
+   - Tomogram reconstruction: fix even/odd functionality.
+   - Fully streamified.
+ Developers:
+   - Update plugin installation from setup.py to pyproject.toml.
 v3.2.0:
  Users:
   - Add parallelization using the paradigm scipion threads / bin threads.

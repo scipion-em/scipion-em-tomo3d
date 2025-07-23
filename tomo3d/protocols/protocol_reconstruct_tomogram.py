@@ -213,21 +213,16 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
         # Check if rotation angle is greater than 45º. If so,
         # swap x and y dimensions to adapt output image sizes to
         # the final sample disposition.
-        swapXY = False
-        if 45 < abs(rotationAngle) < 135:
-            swapXY = True
-        presentAcqOrders = ts.getTsPresentAcqOrders()
+        swapXY = True if 45 < abs(rotationAngle) < 135 else False
         if self.doEvenOdd.get():
             tsEvenTmpFile = self.getEvenTsTmpFile(tsId)
             tsOddTmpFile = self.getOddTsTmpFile(tsId)
             ts.applyTransformToAll(tsTmpFile,
                                    swapXY=swapXY,
-                                   presentAcqOrders=presentAcqOrders,
                                    outFileNamesEvenOdd=[tsEvenTmpFile, tsOddTmpFile])
         else:
             ts.applyTransform(tsTmpFile,
-                              swapXY=swapXY,
-                              presentAcqOrders=presentAcqOrders)
+                              swapXY=swapXY)
         ts.generateTltFile(tltTmpFile)
 
     def reconstructTomogramStep(self, tsId: str):

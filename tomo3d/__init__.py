@@ -1,9 +1,8 @@
 # **************************************************************************
 # *
-# * Authors:  Laura del Cano (ldelcano@cnb.csic.es)
-# *           Yunior C. Fonseca Reyna (cfonseca@cnb.csic.es) [1]
+# * Authors:     Scipion Team
 # *
-# * [1] Unidad de  Bioinformatica of Centro Nacional de Biotecnologia , CSIC
+# * Unidad de  Bioinformatica of Centro Nacional de Biotecnologia , CSIC
 # *
 # * This program is free software; you can redistribute it and/or modify
 # * it under the terms of the GNU General Public License as published by
@@ -30,7 +29,7 @@ This package contains the protocols and data for tomo3d and related software
 from os.path import join
 import pwem
 from .constants import *
-__version__ = '3.3.0'
+__version__ = '3.4.0'
 
 
 class Plugin(pwem.Plugin):

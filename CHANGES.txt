@@ -2,6 +2,7 @@ v3.4.0:
  Developers:
    - Adapted to the updated TiltSeries model from scipion-em-tomo 3.10.1.
    - Streaming reviewed and made more robust.
+   - If a protocol creates new binary files, the sampling rate is properly set in the header of each file.
 v3.3.0:
  Users:
    - binThreads adapted to core change.

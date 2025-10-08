@@ -31,6 +31,8 @@ from typing import Union, List
 
 import mrcfile
 import numpy as np
+
+from pwem.convert.headers import setMRCSamplingRate
 from pyworkflow.object import Set, Boolean, Pointer
 from pyworkflow.protocol import STEPS_PARALLEL, IntParam
 from pyworkflow.utils import cyanStr, redStr
@@ -105,9 +107,11 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
                 # Set of tomograms
                 outputTomos = self.getOutputSetOfTomograms(inPointer)
                 # Tomograms
+                outTomoFile = self._getOutTomoFile(tsId)
+                setMRCSamplingRate(outTomoFile, inObj.getSamplingRate())
                 tomo = Tomogram(tsId=tsId)
                 tomo.copyInfo(inObj)
-                tomo.setFileName(self._getOutTomoFile(tsId))
+                tomo.setFileName(outTomoFile)
                 tomo.setOrigin()
                 if getattr(self, DO_EVEN_ODD, Boolean(False)).get():
                     tomo.setHalfMaps([self._getOutTomoFile(tsId, suffix=EVEN),

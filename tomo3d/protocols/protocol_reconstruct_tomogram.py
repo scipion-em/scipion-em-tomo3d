@@ -25,6 +25,8 @@
 # *****************************************************************************
 import logging
 import time
+from collections import Counter
+
 from pyworkflow.protocol import ProtStreamingBase
 from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD, DO_EVEN_ODD, RAWTLT_EXT, outputTomo3dObjects, \
     IN_TS_SET
@@ -172,7 +174,10 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
 
         while True:
             listInTsIds = inTsSet.getTSIds()
-            if not inTsSet.isStreamOpen() and self.itemTsIdReadList == listInTsIds:
+            # In the if statement below, Counter is used because in the tsId comparison the order doesn’t matter
+            # but duplicates do. With a direct comparison, the closing step may not be inserted because of the order:
+            # ['ts_a', 'ts_b'] != ['ts_b', 'ts_a'], but they are the same with Counter.
+            if not inTsSet.isStreamOpen() and Counter(self.itemTsIdReadList) == Counter(listInTsIds):
                 logger.info(cyanStr('Input set closed.\n'))
                 self._insertFunctionStep(self.closeOutputSetsStep,
                                          self._OUTNAME,

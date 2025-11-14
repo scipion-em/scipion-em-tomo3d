@@ -26,6 +26,8 @@
 import logging
 import time
 import typing
+from collections import Counter
+
 from pyworkflow.protocol import ProtStreamingBase
 from pyworkflow.utils import Message, cyanStr, makePath, redStr
 from tomo3d import Plugin
@@ -34,7 +36,7 @@ from tomo3d.protocols.protocol_base import ProtBaseTomo3d, IN_TOMO_SET
 
 logger = logging.getLogger(__name__)
 
-#Denoising methods
+# Denoising methods
 DENOISE_EED = 0
 DENOISE_BF = 1
 
@@ -155,7 +157,10 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
 
         while True:
             listInTsIds = inTomoSet.getTSIds()
-            if not inTomoSet.isStreamOpen() and self.itemTsIdReadList == listInTsIds:
+            # In the if statement below, Counter is used because in the tsId comparison the order doesn’t matter
+            # but duplicates do. With a direct comparison, the closing step may not be inserted because of the order:
+            # ['ts_a', 'ts_b'] != ['ts_b', 'ts_a'], but they are the same with Counter.
+            if not inTomoSet.isStreamOpen() and Counter(self.itemTsIdReadList) == Counter(listInTsIds):
                 logger.info(cyanStr('Input set closed.\n'))
                 self._insertFunctionStep(self.closeOutputSetsStep,
                                          self._OUTNAME,

@@ -26,18 +26,17 @@
 import logging
 import time
 import typing
-from pyworkflow.object import Pointer
+from collections import Counter
+
 from pyworkflow.protocol import ProtStreamingBase
 from pyworkflow.utils import Message, cyanStr, makePath, redStr
-from tomo.objects import SetOfTomograms
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, PointerParam, GT
-from tomo3d.protocols.protocol_base import ProtBaseTomo3d
+from tomo3d.protocols.protocol_base import ProtBaseTomo3d, IN_TOMO_SET
 
 logger = logging.getLogger(__name__)
-IN_TOMOS = 'inputSetTomograms'
 
-#Denoising methods
+# Denoising methods
 DENOISE_EED = 0
 DENOISE_BF = 1
 
@@ -57,6 +56,8 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
       in terms of memory requirements.
     """
     _label = 'denoise tomogram'
+    eedProgram = Plugin.getTomoEEDProgram()
+    bFlowProgram = Plugin.getTomoBFlowProgram()
 
     def __init__(self, **args):
         super().__init__(**args)
@@ -65,7 +66,7 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
     def _defineParams(self, form):
         # First we customize the inputParticles param to fit our needs in this protocol
         form.addSection(label=Message.LABEL_INPUT)
-        form.addParam(IN_TOMOS, PointerParam, pointerClass='SetOfTomograms',
+        form.addParam(IN_TOMO_SET, PointerParam, pointerClass='SetOfTomograms',
                       label='Set Of Tomograms',
                       help='Set of tomograms that will be denoised.')
         form.addParam('method', EnumParam,
@@ -151,14 +152,18 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
     # --------------------------- INSERT steps functions --------------------------------------------
     def stepsGeneratorStep(self) -> None:
         closeSetStepDeps = []
-        inTomoSet = self.getInputSet()
+        inTomoSet = self.getInputTomoSet()
         self.readingOutput()
 
         while True:
             listInTsIds = inTomoSet.getTSIds()
-            if not inTomoSet.isStreamOpen() and self.itemTsIdReadList == listInTsIds:
+            # In the if statement below, Counter is used because in the tsId comparison the order doesn’t matter
+            # but duplicates do. With a direct comparison, the closing step may not be inserted because of the order:
+            # ['ts_a', 'ts_b'] != ['ts_b', 'ts_a'], but they are the same with Counter.
+            if not inTomoSet.isStreamOpen() and Counter(self.itemTsIdReadList) == Counter(listInTsIds):
                 logger.info(cyanStr('Input set closed.\n'))
-                self._insertFunctionStep(self._closeOutputSet,
+                self._insertFunctionStep(self.closeOutputSetsStep,
+                                         self._OUTNAME,
                                          prerequisites=closeSetStepDeps,
                                          needsGPU=False)
                 break
@@ -168,7 +173,7 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
                     cInputId = self._insertFunctionStep(self.denoiseTomogramStep, tsId,
                                                         prerequisites=[],
                                                         needsGPU=False)
-                    cOutId = self._insertFunctionStep(self.createOutputStep, tsId,
+                    cOutId = self._insertFunctionStep(self.createOutStep, tsId,
                                                       prerequisites=cInputId,
                                                       needsGPU=False)
                     closeSetStepDeps.append(cOutId)
@@ -191,21 +196,21 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
                 self.runBflow(tsId)
         except Exception as e:
             self.failedItems.append(tsId)
-            logger.error(redStr(f'Tomo3d denoising execution failed for tsId {tsId} -> {e}'))
+            logger.error(redStr(f'tsId = {tsId} -> {self.eedProgram} or {self.bFlowProgram} execution failed'
+                                f' with the exception -> {e}'))
 
-    def createOutputStep(self, tsId: str):
-        if tsId not in self.failedItems:
-            super().createOutputStep(tsId)
+    def createOutStep(self, tsId: str):
+        if tsId in self.failedItems:
+            self.addToOutFailedSet(tsId)
+        else:
+            inTsPointer = self.getInputTomoSet(pointer=True)
+            super().createOutputStep(inTsPointer, tsId)
 
     # --------------------------- INFO functions --------------------------------------------
     def _citations(self):
         return ['Fernandez2018_tomoeed', 'Fernandez2009_tomobflow']
 
     # --------------------------- UTILS functions --------------------------------------------
-    def getInputSet(self, pointer: bool = False) -> typing.Union[Pointer, SetOfTomograms]:
-        tomoSetPointer = getattr(self, IN_TOMOS)
-        return tomoSetPointer if pointer else tomoSetPointer.get()
-
     def runBflow(self, tsId: str):
         """Denoises de tomogram using the BFlow method"""
         params = self.getCommonParamsCmd(tsId)
@@ -223,7 +228,7 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
         self.runJob(Plugin.getTomoEEDProgram(), args)
 
     def getCommonParamsCmd(self, tsId: str) -> typing.List[str]:
-        tomo = self.getCurrentItem(self.getInputSet(), tsId)
+        tomo = self.getCurrentItem(self.getInputTomoSet(), tsId)
         inTomoFile = tomo.getFileName()
         outTomoFile = self._getOutTomoFile(tsId)
         params = [

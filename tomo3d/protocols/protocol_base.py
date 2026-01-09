@@ -36,6 +36,7 @@ from pwem.convert.headers import setMRCSamplingRate
 from pyworkflow.object import Set, Boolean, Pointer
 from pyworkflow.protocol import STEPS_PARALLEL, IntParam
 from pyworkflow.utils import cyanStr, redStr
+from pyworkflow.utils.retry_streaming import retry_on_sqlite_lock
 from tomo.protocols import ProtTomoBase
 from pwem.protocols import EMProtocol
 from tomo.objects import Tomogram, SetOfTomograms, SetOfTiltSeries, TiltSeries
@@ -99,36 +100,43 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
     # --------------------------- INSERT steps functions --------------------------------------------
     def createOutputStep(self,
                          inPointer: Pointer,
-                         tsId: str):
+                         inObj: Union[TiltSeries, Tomogram]):
+        tsId = inObj.getTsId()
+        outTomoFile = self._getOutTomoFile(tsId)
+        setMRCSamplingRate(outTomoFile, inObj.getSamplingRate())
         try:
-            with self._lock:
-                inSet = inPointer.get()
-                inObj = self.getCurrentItem(inSet, tsId, doLock=False)
-                # Set of tomograms
-                outputTomos = self.getOutputSetOfTomograms(inPointer)
-                # Tomograms
-                outTomoFile = self._getOutTomoFile(tsId)
-                setMRCSamplingRate(outTomoFile, inObj.getSamplingRate())
-                tomo = Tomogram(tsId=tsId)
-                tomo.copyInfo(inObj)
-                tomo.setFileName(outTomoFile)
-                tomo.setOrigin()
-                if getattr(self, DO_EVEN_ODD, Boolean(False)).get():
-                    tomo.setHalfMaps([self._getOutTomoFile(tsId, suffix=EVEN),
-                                      self._getOutTomoFile(tsId, suffix=ODD)])
-                outputTomos.append(tomo)
-                outputTomos.update(tomo)
-                # Data persistence
-                outputTomos.write()
-                self._store(outputTomos)
-                # Close explicitly the outputs (for streaming)
-                for outputName in self._possibleOutputs.keys():
-                    output = getattr(self, outputName, None)
-                    if output:
-                        output.close()
+            self._registerOutput(inPointer, inObj, outTomoFile)
         except Exception as e:
             logger.error(redStr(f'tsId = {tsId} -> Unable to register the output with '
                                 f'exception {e}. Skipping... '))
+
+    @retry_on_sqlite_lock(log=logger)
+    def _registerOutput(self,
+                        inPointer: Pointer,
+                        inObj: Union[TiltSeries, Tomogram],
+                        outTomoFile: str):
+        tsId = inObj.getTsId()
+        with self._lock:
+            # Set of tomograms
+            outputTomos = self.getOutputSetOfTomograms(inPointer)
+            # Tomograms
+            tomo = Tomogram(tsId=tsId)
+            tomo.copyInfo(inObj)
+            tomo.setFileName(outTomoFile)
+            tomo.setOrigin()
+            if getattr(self, DO_EVEN_ODD, Boolean(False)).get():
+                tomo.setHalfMaps([self._getOutTomoFile(tsId, suffix=EVEN),
+                                  self._getOutTomoFile(tsId, suffix=ODD)])
+            outputTomos.append(tomo)
+            outputTomos.update(tomo)
+            # Data persistence
+            outputTomos.write()
+            self._store(outputTomos)
+            # Close explicitly the outputs (for streaming)
+            for outputName in self._possibleOutputs.keys():
+                output = getattr(self, outputName, None)
+                if output:
+                    output.close()
 
     def closeOutputSetsStep(self, attrib: Union[List[str], str]):
         self._closeOutputSet()
@@ -195,21 +203,22 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
 
             return failedTomos
 
+    @retry_on_sqlite_lock(log=logger)
     def addToOutFailedSet(self,
-                          tsId: str,
-                          inputsAreTs: bool = True) -> None:
+                          item: Union[TiltSeries, Tomogram]) -> None:
         """ Just copy input item to the failed output set. """
+        tsId = item.getTsId()
         logger.info(cyanStr(f'Failed TS ---> {tsId}'))
         try:
-            inputSet = self.getInputTsSet(pointer=True) if inputsAreTs else self.getInputTomoSet(pointer=True)
-            output = self.getOutputFailedSet(inputSet, inputsAreTs=inputsAreTs)
+            inputsAreTs = True if isinstance(item, TiltSeries) else False
             with self._lock:
-                item = self.getCurrentTs(tsId) if inputsAreTs else self.getCurrentTomo(tsId)
+                inputSet = self.getInputTsSet(pointer=True) if inputsAreTs else self.getInputTomoSet(pointer=True)
+                output = self.getOutputFailedSet(inputSet, inputsAreTs=inputsAreTs)
                 newItem = item.clone()
                 newItem.copyInfo(item)
                 output.append(newItem)
 
-                if isinstance(item, TiltSeries):
+                if inputsAreTs:
                     newItem.copyItems(item)
                     newItem.write()
 
@@ -229,25 +238,9 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
         tsSetPointer = getattr(self, IN_TS_SET)
         return tsSetPointer if pointer else tsSetPointer.get()
 
-    def getCurrentTs(self, tsId: str) -> TiltSeries:
-        return self.getInputTsSet().getItem(TiltSeries.TS_ID_FIELD, tsId)
-
     def getInputTomoSet(self, pointer: bool = False) -> Union[Pointer, SetOfTomograms]:
         tomoSetPointer = getattr(self, IN_TOMO_SET)
         return tomoSetPointer if pointer else tomoSetPointer.get()
-
-    def getCurrentTomo(self, tsId: str) -> Tomogram:
-        return self.getInputTomoSet().getItem(Tomogram.TS_ID_FIELD, tsId)
-
-    def getCurrentItem(self,
-                       inSet: Union[SetOfTomograms, SetOfTiltSeries],
-                       tsId: str,
-                       doLock: bool = True) -> Union[Tomogram, TiltSeries]:
-        if doLock:
-            with self._lock:
-                return inSet.getItem(Tomogram.TS_ID_FIELD, tsId)
-        else:
-            return inSet.getItem(Tomogram.TS_ID_FIELD, tsId)
 
     def readingOutput(self) -> None:
         outTomoSet = getattr(self, self._OUTNAME, None)

@@ -5,6 +5,7 @@ v3.4.0:
    - If a protocol creates new binary files, the sampling rate is properly set in the header of each file.
    - Fix streaming condition to insert the closing step. Now it uses collections.Counter when comparing
      the tsId lists instead of direct comparison, which is order-sensitive.
+   - Streaming: add a decorator to manage the possible db locks.
 v3.3.0:
  Users:
    - binThreads adapted to core change.

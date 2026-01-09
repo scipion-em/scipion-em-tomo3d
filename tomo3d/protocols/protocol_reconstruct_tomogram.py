@@ -28,6 +28,7 @@ import time
 from collections import Counter
 
 from pyworkflow.protocol import ProtStreamingBase
+from tomo.objects import TiltSeries
 from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD, DO_EVEN_ODD, RAWTLT_EXT, outputTomo3dObjects, \
     IN_TS_SET
 from pyworkflow.utils import makePath, Message, cyanStr, redStr
@@ -173,32 +174,37 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
         self.readingOutput()
 
         while True:
-            listInTsIds = inTsSet.getTSIds()
+            with self._lock:
+                inTsIds = set(inTsSet.getTSIds())
+
             # In the if statement below, Counter is used because in the tsId comparison the order doesn’t matter
             # but duplicates do. With a direct comparison, the closing step may not be inserted because of the order:
             # ['ts_a', 'ts_b'] != ['ts_b', 'ts_a'], but they are the same with Counter.
-            if not inTsSet.isStreamOpen() and Counter(self.itemTsIdReadList) == Counter(listInTsIds):
+            if not inTsSet.isStreamOpen() and Counter(self.itemTsIdReadList) == Counter(inTsIds):
                 logger.info(cyanStr('Input set closed.\n'))
                 self._insertFunctionStep(self.closeOutputSetsStep,
                                          self._OUTNAME,
                                          prerequisites=closeSetStepDeps,
                                          needsGPU=False)
                 break
-            for ts in inTsSet.iterItems():
-                tsId = ts.getTsId()
-                if tsId not in self.itemTsIdReadList and ts.getSize() > 0:  # Avoid processing empty TS (before the Tis are added)
-                    cInputId = self._insertFunctionStep(self.convertInputStep, tsId,
-                                                        prerequisites=[],
-                                                        needsGPU=False)
-                    recId = self._insertFunctionStep(self.reconstructTomogramStep, tsId,
-                                                     prerequisites=cInputId,
-                                                     needsGPU=False)
-                    cOutId = self._insertFunctionStep(self.createOutStep, tsId,
-                                                      prerequisites=recId,
-                                                      needsGPU=False)
-                    closeSetStepDeps.append(cOutId)
-                    logger.info(cyanStr(f"Steps created for tsId = {tsId}"))
-                    self.itemTsIdReadList.append(tsId)
+
+            nonProcessedTsIds = inTsIds - set(self.itemTsIdReadList)
+            tsToProcessDict = {tsId: ts.clone() for ts in inTsSet.iterItems()
+                               if (tsId := ts.getTsId()) in nonProcessedTsIds  # Only not processed tsIds
+                               and ts.getSize() > 0}  # Avoid processing empty TS
+            for tsId, ts in tsToProcessDict.items():
+                cInputId = self._insertFunctionStep(self.convertInputStep, ts,
+                                                    prerequisites=[],
+                                                    needsGPU=False)
+                recId = self._insertFunctionStep(self.reconstructTomogramStep, tsId,
+                                                 prerequisites=cInputId,
+                                                 needsGPU=False)
+                cOutId = self._insertFunctionStep(self.createOutStep, ts,
+                                                  prerequisites=recId,
+                                                  needsGPU=False)
+                closeSetStepDeps.append(cOutId)
+                logger.info(cyanStr(f"Steps created for tsId = {tsId}"))
+                self.itemTsIdReadList.append(tsId)
 
             time.sleep(10)
             if inTsSet.isStreamOpen():
@@ -206,13 +212,13 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
                     inTsSet.loadAllProperties()  # refresh status for the streaming
 
     # --------------------------- STEPS functions --------------------------------------------
-    def convertInputStep(self, tsId: str):
+    def convertInputStep(self, ts: TiltSeries):
+        tsId = ts.getTsId()
         try:
             logger.info(cyanStr(f'tsId = {tsId}: converting the inputs...'))
             makePath(self.getWorkingDirName(tsId), self._getTsExtraDir(tsId))
             tsTmpFile = self.getTsTmpFile(tsId)
             tltTmpFile = self.getTsTmpFile(tsId, ext=RAWTLT_EXT)
-            ts = self.getCurrentItem(self.getInputTsSet(), tsId)
             if self.doEvenOdd.get():
                 tsEvenTmpFile = self.getEvenTsTmpFile(tsId)
                 tsOddTmpFile = self.getOddTsTmpFile(tsId)
@@ -257,12 +263,13 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
                 logger.error(redStr(f'tsId = {tsId} -> {self.program} execution failed'
                                     f' with the exception -> {e}'))
 
-    def createOutStep(self, tsId: str):
+    def createOutStep(self, ts: TiltSeries):
+        tsId = ts.getTsId()
         if tsId in self.failedItems:
             self.addToOutFailedSet(tsId)
         else:
             inTsPointer = self.getInputTsSet(pointer=True)
-            super().createOutputStep(inTsPointer, tsId)
+            super().createOutputStep(inTsPointer, ts)
 
     # --------------------------- INFO functions --------------------------------------------
     def _validate(self):

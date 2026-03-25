@@ -1,3 +1,4 @@
+v3.4.2: hot fix in the generation of failed TS in the protocol for tomogram reconstruction.
 v3.4.1: deploy test.
 v3.4.0:
  Developers:

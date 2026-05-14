@@ -266,7 +266,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
     def createOutStep(self, ts: TiltSeries):
         tsId = ts.getTsId()
         if tsId in self.failedItems:
-            self.addToOutFailedSet(ts)
+            self.addToOutFailedSet(tsId)
         else:
             inTsPointer = self.getInputTsSet(pointer=True)
             super().createOutputStep(inTsPointer, ts)

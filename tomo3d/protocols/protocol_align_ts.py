@@ -44,6 +44,58 @@ class ProtJjsoftAlignTs(EMProtocol, ProtTomoBase):
     Software from : https://sites.google.com/site/3demimageprocessing/
     Returns the set of aligned tilt series
     """
+
+    """
+        Motion Compensated Tilt-Series Alignment (ProtJjsoftAlignTs) — User Manual
+
+            Overview
+
+            The Motion Compensated Alignment protocol aligns cryo-electron tomography
+            tilt series using fiducial marker positions and TomoWarpAlign utilities.
+            Its main purpose is to correct specimen motion and geometric distortions
+            generated during tilt-series acquisition, producing aligned tilt series
+            suitable for tomographic reconstruction and downstream structural analysis.
+
+            Inputs and Workflow
+
+            The protocol requires a set of non-interpolated tilt series together with
+            their corresponding fiducial landmark models. During execution, the tilt
+            series are converted into IMOD-compatible intermediate files, including
+            stacks, tilt-angle files, and transformation matrices.
+
+            Fiducial information is transformed into residual files that allow
+            TomoWarpAlign to estimate motion-compensated alignment parameters. The
+            resulting transformations are then applied to generate corrected and
+            interpolated tilt-series stacks.
+
+            Motion Compensation and Alignment
+
+            The protocol uses fiducial markers as stable reference points to estimate
+            shifts, rotations, and local specimen motion across the tilt series.
+            Accurate fiducial tracking is essential because alignment quality directly
+            affects the quality of the final tomographic reconstruction.
+
+            Compared to simpler rigid alignment methods, motion compensation improves
+            geometric consistency and reduces reconstruction artifacts, particularly
+            in datasets affected by beam-induced motion or stage instability.
+
+            Binning and Output Generation
+
+            Optional binning can be applied to reduce computational cost and storage
+            requirements. When binning is enabled, the protocol automatically updates
+            the sampling rate metadata to preserve consistency throughout the workflow.
+
+            After execution, the protocol generates a new set of aligned and
+            interpolated tilt series that can be directly used for tomogram
+            reconstruction, subtomogram analysis, and structural interpretation.
+
+            Final Perspective
+
+            Accurate motion-compensated alignment is a fundamental preprocessing step
+            in cryo-electron tomography workflows. Proper fiducial tracking and careful
+            validation of the aligned tilt series are essential for obtaining reliable
+            and biologically meaningful tomographic reconstructions.
+        """
     _label = 'motion compensated alignment'
     _devStatus = BETA
 

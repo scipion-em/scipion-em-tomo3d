@@ -72,6 +72,50 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
     Software from: https://sites.google.com/site/3demimageprocessing/
     Returns the set of tomograms
     """
+
+    """
+        Tomogram Reconstruction with TOMO3D (ProtBaseTomo3d) — User Manual
+
+            Overview
+
+            The ProtBaseTomo3d protocol reconstructs tomograms from aligned
+            tilt series using the TOMO3D software package. Its main purpose is
+            to generate 3D tomographic volumes suitable for visualization,
+            structural analysis, and downstream cryo-electron tomography workflows.
+
+            Inputs and Workflow
+
+            The protocol accepts aligned tilt series or tomograms as input and
+            reconstructs the corresponding 3D volumes while preserving sampling
+            and acquisition metadata. Temporary files, output registration, and
+            reconstruction management are handled automatically during execution.
+
+            Reconstruction and Orientation Handling
+
+            After reconstruction, the protocol rotates the tomograms to restore
+            the correct orientation required for visualization and interpretation.
+            Optional even and odd half-map generation is also supported for
+            advanced validation workflows.
+
+            Streaming and Parallel Processing
+
+            The protocol supports both streaming and parallel execution, allowing
+            multiple tomograms to be reconstructed efficiently while maintaining
+            compatibility with continuous cryo-ET processing pipelines.
+
+            Outputs and Interpretation
+
+            The resulting tomograms are stored in MRC format and can be directly
+            used for visualization, segmentation, subtomogram averaging, and
+            biological interpretation. Failed reconstructions are automatically
+            tracked and stored separately for quality control purposes.
+
+            Final Perspective
+
+            Tomogram reconstruction is a critical step in cryo-electron tomography
+            because it converts aligned tilt-series data into biologically
+            meaningful 3D structural information suitable for downstream analysis.
+        """
     _OUTNAME = outputTomo3dObjects.tomograms.name
     _possibleOutputs = {_OUTNAME: SetOfTomograms}
     stepsExecutionMode = STEPS_PARALLEL

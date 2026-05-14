@@ -56,6 +56,52 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
       of datasets. Furthermore, the program has been optimized to reduce the computational demands, specially
       in terms of memory requirements.
     """
+    """
+    ProtTomo3dProtDenoiseTomogram — User Manual
+
+    Overview
+
+    ProtTomo3dProtDenoiseTomogram is a tomography processing protocol designed
+    to denoise tomograms using TOMO3D-based filtering methods while preserving
+    biologically relevant structural information. The protocol supports two
+    nonlinear denoising approaches: Edge Enhancing Diffusion (EED), also known
+    as TomoEED, and BFlow, a Beltrami flow–based filtering method optimized for
+    noise reduction with edge preservation. Its main purpose is to improve
+    tomogram quality before downstream analysis, visualization, or interpretation
+    in cryo-electron tomography workflows.
+
+    Inputs and General Workflow
+
+    The protocol takes a set of tomograms as input and processes them in
+    streaming mode, allowing tomograms to be denoised progressively as they
+    become available. Users can select the denoising strategy and configure
+    parameters such as Gaussian pre-filtering, number of diffusion iterations,
+    lambda regularization, timestep, and multithreading behavior. EED is intended
+    for edge-preserving anisotropic diffusion, while BFlow focuses on adaptive
+    smoothing with reduced parameter complexity and optimized computational
+    efficiency.
+
+    Execution and Outputs
+
+    During execution, the protocol continuously monitors incoming tomograms,
+    launches denoising jobs independently for each tomogram, and automatically
+    generates output datasets. The implementation also includes error handling
+    and tracking of failed tomograms, ensuring robust execution in large-scale
+    or streaming workflows. Outputs consist of denoised tomograms preserving
+    the original metadata and sampling information, making them suitable for
+    subsequent reconstruction, segmentation, or structural interpretation tasks.
+
+    Biological Perspective
+
+    From a biological perspective, denoising is a critical preprocessing step
+    because cryo-electron tomography data are typically affected by high noise
+    levels and low contrast. Proper denoising improves the visibility of
+    membranes, macromolecular complexes, and intracellular structures while
+    minimizing the loss of structural details. However, excessive smoothing or
+    unsuitable parameter choices may blur biologically meaningful features, so
+    parameter selection should balance noise reduction and structural preservation
+    according to the experimental objective.
+    """
     _label = 'denoise tomogram'
     eedProgram = Plugin.getTomoEEDProgram()
     bFlowProgram = Plugin.getTomoBFlowProgram()

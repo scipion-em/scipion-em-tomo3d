@@ -52,6 +52,82 @@ class ProtJjsoftAlignTomo3dTomogram(ProtBaseTomo3d):
     Software from : https://sites.google.com/site/3demimageprocessing/
     Returns the set of tomograms
     """
+
+    """
+        Motion Compensated Reconstruction (ProtJjsoftAlignTomo3dTomogram) — User Manual
+            Overview
+
+            The Motion Compensated Reconstruction protocol aligns tilt series using fiducial
+            markers and reconstructs tomograms through the tomoalign and tomorec programs.
+            Its main objective is to compensate for sample motion and improve tomogram quality
+            during cryo-electron tomography reconstruction. By combining fiducial-based alignment
+            with weighted reconstruction methods, the protocol generates tomograms with improved
+            structural consistency and reduced reconstruction artifacts.
+
+            In biological cryo-ET workflows, this protocol is especially useful for datasets
+            affected by beam-induced motion, sample deformation, or acquisition instabilities.
+            The use of fiducial landmarks allows more accurate estimation of tilt-series alignment,
+            which is critical for preserving structural details in reconstructed tomograms.
+
+            Inputs and General Workflow
+
+            The protocol requires a set of tilt series together with their corresponding fiducial
+            landmark models. During preprocessing, tilt angles and fiducial coordinates are converted
+            into formats compatible with tomoalign and tomorec. Optional IMOD transformation files
+            can also be incorporated to provide initial alignment parameters such as rotations or
+            magnification corrections.
+
+            Each tilt series is processed independently. First, the fiducial information is used
+            to estimate motion-compensated alignment parameters. Afterwards, the corrected tilt
+            series is reconstructed into a tomogram using the selected weighting strategy. Finally,
+            the reconstructed tomogram is rotated to restore the correct orientation expected in
+            downstream cryo-ET analysis workflows.
+
+            Motion Modeling and Sample Thickness
+
+            The protocol supports two motion modeling strategies: polynomial modeling and spline-based
+            interpolation. Polynomial models provide a robust approximation of motion trajectories,
+            while splines allow smoother local motion estimation and may better capture complex
+            deformations.
+
+            Users can also specify whether the sample is considered thin or thick. Thin samples
+            use simpler bivariate models, whereas thick samples require more computationally
+            demanding trivariate models to properly account for depth-dependent motion effects.
+            Correct selection of sample thickness is important because inaccurate modeling may
+            reduce alignment precision and compromise reconstruction quality.
+
+            Reconstruction and Weighting Methods
+
+            After alignment, tomograms are reconstructed using different weighting approaches.
+            Ramp and Hamming weighted back-projection methods provide fast reconstruction with
+            different levels of noise suppression, while SIRT reconstruction offers iterative
+            refinement that can improve contrast and reduce reconstruction artifacts at the cost
+            of higher computational time.
+
+            The protocol also allows users to control tomogram dimensions and reconstruction
+            boundaries, including width, height, and slice ranges. These options are useful
+            for focusing reconstruction on biologically relevant regions while reducing memory
+            and computational requirements.
+
+            Outputs and Interpretation
+
+            The protocol generates motion-compensated tomograms for each processed tilt series.
+            The reconstructed volumes preserve the spatial information corrected through fiducial
+            alignment and can be directly used for visualization, segmentation, subtomogram
+            averaging, or downstream structural analysis.
+
+            Because the reconstruction quality strongly depends on fiducial accuracy and motion
+            estimation, users should visually inspect the resulting tomograms to verify alignment
+            consistency and structural preservation.
+
+            Final Perspective
+
+            Motion-compensated reconstruction is a biologically important step in cryo-electron
+            tomography because alignment inaccuracies directly affect the interpretability of
+            reconstructed cellular structures. Proper fiducial tracking, appropriate motion
+            modeling, and careful selection of reconstruction weighting methods are essential
+            for obtaining reliable tomograms suitable for high-quality structural analysis.
+        """
     _label = 'motion compensated reconstruction'
     _devStatus = BETA
 

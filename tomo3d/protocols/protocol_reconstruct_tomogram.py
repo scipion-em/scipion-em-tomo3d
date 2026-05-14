@@ -54,6 +54,99 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
     namely WBP and SIRT. It proves to be competitive with current GPU solutions in terms
     of processing time, in the order of a few seconds with WBP or minutes with SIRT.
     """
+
+    """
+        Tomogram Reconstruction (ProtTomo3dReconstrucTomo) — User Manual
+            Overview
+
+            The Tomogram Reconstruction protocol reconstructs three-dimensional tomograms
+            from aligned tilt series using the TOMO3D software package. The protocol is
+            designed to efficiently generate tomographic reconstructions on multicore CPU
+            systems through multithreaded processing, supporting both fast analytical
+            reconstruction and iterative refinement strategies.
+
+            In cryo-electron tomography workflows, tomogram reconstruction represents a
+            critical step where two-dimensional tilt images are combined into a coherent
+            three-dimensional representation of the biological specimen. The quality of
+            the reconstructed tomogram directly affects downstream analyses such as
+            subtomogram averaging, segmentation, structural interpretation, and cellular
+            visualization.
+
+            Inputs and General Workflow
+
+            The protocol requires a set of aligned tilt series as input. During execution,
+            the tilt series are converted into temporary reconstruction formats together
+            with their corresponding tilt-angle files. If available, the protocol can also
+            reconstruct independent even and odd tomograms for validation or resolution
+            estimation purposes.
+
+            Each tilt series is processed independently through a streaming workflow. The
+            protocol continuously monitors incoming datasets, converts the input images,
+            reconstructs the tomograms using the selected reconstruction strategy, and
+            automatically registers the outputs once processing is completed.
+
+            Reconstruction Methods
+
+            The protocol provides two reconstruction strategies: Weighted Back Projection
+            (WBP) and Simultaneous Iterative Reconstruction Technique (SIRT).
+
+            WBP is a fast analytical reconstruction method based on filtered back projection.
+            It produces reconstructions rapidly and is particularly suitable for subtomogram
+            averaging workflows where preservation of high-frequency information is important.
+            The protocol also allows the use of a Hamming frequency filter to attenuate noisy
+            high-frequency components and improve visual quality.
+
+            SIRT is an iterative algebraic reconstruction method that progressively refines
+            the tomogram to maximize consistency between the reconstructed volume and the
+            experimental projections. Although computationally slower, SIRT generally produces
+            tomograms with improved contrast and smoother density distributions, making it
+            more appropriate for cellular cryo-ET visualization and interpretation.
+
+            Tomogram Dimensions and Reconstruction Control
+
+            The protocol allows users to manually define tomogram dimensions, including
+            thickness, width, and reconstruction slice ranges. These parameters help focus
+            the reconstruction on biologically relevant regions while reducing memory usage
+            and computational cost.
+
+            Thickness values must be even numbers to preserve projection symmetry required
+            by the reconstruction algorithm. Slice selection along the tilt axis can also
+            restrict reconstruction to specific regions of interest, which is particularly
+            useful for large tomograms or localized structural studies.
+
+            Streaming and Parallel Processing
+
+            The protocol supports streaming execution and parallel processing. New tilt
+            series can be processed automatically as they become available, making the
+            protocol suitable for high-throughput cryo-ET facilities and continuous data
+            acquisition pipelines.
+
+            Multithreaded execution allows efficient CPU utilization during reconstruction,
+            significantly reducing processing time for large tomographic datasets without
+            requiring specialized GPU hardware.
+
+            Outputs and Interpretation
+
+            The protocol generates reconstructed tomograms for each input tilt series.
+            When enabled, additional even and odd reconstructions are also produced for
+            independent validation and downstream resolution assessment.
+
+            After reconstruction, tomograms are rotated to restore the correct spatial
+            orientation expected for subsequent cryo-electron tomography analysis workflows.
+            The resulting tomograms can then be used for visualization, segmentation,
+            subtomogram averaging, particle picking, or structural interpretation.
+
+            Final Perspective
+
+            Tomogram reconstruction is one of the most biologically significant stages in
+            cryo-electron tomography because it transforms raw projection images into
+            interpretable three-dimensional cellular information. The selection between
+            WBP and SIRT reconstruction depends on the biological objective, balancing
+            computational speed, structural contrast, and preservation of high-resolution
+            information. Careful adjustment of reconstruction dimensions and filtering
+            parameters is essential for obtaining reliable tomograms suitable for advanced
+            structural analysis.
+        """
     _label = 'reconstruct tomogram'
     program = Plugin.getTomo3dProgram()
 

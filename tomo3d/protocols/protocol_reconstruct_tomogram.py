@@ -99,7 +99,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
                            ' preserve low-frequency components and modulate the contribution '
                            ' of the other frequency components')
         self._insertBinThreadsParam(form)
-        form.addParallelSection(threads=2, mpi=0)
+        form.addParallelSection(threads=3, mpi=0)
 
     @staticmethod
     def _defineInputParams(form):
@@ -273,7 +273,7 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
 
     # --------------------------- INFO functions --------------------------------------------
     def _validate(self):
-        errorMsg = []
+        errorMsg = super()._validate()
         if self.height.get() % 2 == 1:
             errorMsg.append('The thickness must be an even number')
         if self.doEvenOdd.get() and not self.getInputTsSet().hasOddEven():
@@ -281,6 +281,25 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
                             'in the metadata of the introduced tilt-series.')
 
         return errorMsg
+
+    def _warnings(self):
+        warnings = []
+        nThreads = self.numberOfThreads.get()
+        binThreads = self.binThreads.get()
+        processingNodes = max(nThreads - 2, 0)
+        totalCpuThreads = processingNodes * binThreads
+        if totalCpuThreads > 16:
+            warnings.append(
+                'High CPU load: %d Scipion processing nodes x %d binThreads = '
+                '%d total CPU threads. Verify your machine can handle this.'
+                % (processingNodes, binThreads, totalCpuThreads)
+            )
+        if self.doEvenOdd.get():
+            warnings.append(
+                'Even/odd mode runs tomo3d 3 times per tilt-series '
+                '(full + even + odd). Budget ~3x wall-clock time.'
+            )
+        return warnings
 
     def _summary(self):
         summary = []

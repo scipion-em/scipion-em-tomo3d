@@ -148,7 +148,7 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
                            ' number of iterations needed.',
                       expertLevel=LEVEL_ADVANCED)
         self._insertBinThreadsParam(form)
-        form.addParallelSection(threads=2, mpi=0)
+        form.addParallelSection(threads=3, mpi=0)
 
     # --------------------------- INSERT steps functions --------------------------------------------
     def stepsGeneratorStep(self) -> None:

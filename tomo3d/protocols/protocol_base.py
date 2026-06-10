@@ -132,11 +132,11 @@ class ProtBaseTomo3d(EMProtocol, ProtTomoBase):
             # Data persistence
             outputTomos.write()
             self._store(outputTomos)
-            # Close explicitly the outputs (for streaming)
-            for outputName in self._possibleOutputs.keys():
-                output = getattr(self, outputName, None)
-                if output:
-                    output.close()
+            outputTomos.close()
+        for outputName in self._possibleOutputs.keys():
+            output = getattr(self, outputName, None)
+            if output:
+                output.close()
 
     def closeOutputSetsStep(self, attrib: Union[List[str], str]):
         self._closeOutputSet()

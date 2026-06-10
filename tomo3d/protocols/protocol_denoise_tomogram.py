@@ -24,7 +24,7 @@
 # *
 # **************************************************************************
 import logging
-import time
+
 import typing
 from collections import Counter
 
@@ -185,10 +185,8 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
                     logger.info(cyanStr(f"Steps created for tsId = {tsId}"))
                     self.itemTsIdReadList.append(tsId)
 
-            time.sleep(10)
-            if inTomoSet.isStreamOpen():
-                with self._lock:
-                    inTomoSet.loadAllProperties()  # refresh status for the streaming
+            from tomo.utils import refreshStreaming
+            refreshStreaming(inTomoSet)
 
     # --------------------------- STEPS functions --------------------------------------------
     def denoiseTomogramStep(self, tomo: Tomogram):

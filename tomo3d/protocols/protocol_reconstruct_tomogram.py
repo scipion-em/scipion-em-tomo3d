@@ -24,7 +24,7 @@
 # *
 # *****************************************************************************
 import logging
-import time
+
 from collections import Counter
 
 from pyworkflow.protocol import ProtStreamingBase
@@ -206,10 +206,8 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
                 logger.info(cyanStr(f"Steps created for tsId = {tsId}"))
                 self.itemTsIdReadList.append(tsId)
 
-            time.sleep(10)
-            if inTsSet.isStreamOpen():
-                with self._lock:
-                    inTsSet.loadAllProperties()  # refresh status for the streaming
+            from tomo.utils import refreshStreaming
+            refreshStreaming(inTsSet)
 
     # --------------------------- STEPS functions --------------------------------------------
     def convertInputStep(self, ts: TiltSeries):

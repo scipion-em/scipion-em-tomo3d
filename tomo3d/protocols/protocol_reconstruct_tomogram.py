@@ -29,6 +29,7 @@ from collections import Counter
 
 from pyworkflow.protocol import ProtStreamingBase
 from tomo.objects import TiltSeries
+from tomo.utils import refreshStreaming
 from tomo3d.protocols.protocol_base import ProtBaseTomo3d, EVEN, ODD, DO_EVEN_ODD, RAWTLT_EXT, outputTomo3dObjects, \
     IN_TS_SET
 from pyworkflow.utils import makePath, Message, cyanStr, redStr
@@ -206,10 +207,10 @@ class ProtTomo3dReconstrucTomo(ProtBaseTomo3d, ProtStreamingBase):
                 logger.info(cyanStr(f"Steps created for tsId = {tsId}"))
                 self.itemTsIdReadList.append(tsId)
 
-            time.sleep(10)
-            if inTsSet.isStreamOpen():
-                with self._lock:
-                    inTsSet.loadAllProperties()  # refresh status for the streaming
+            # Conservative, lock-safe, never-fatal stream-state refresh
+            # (replaces the fragile time.sleep + loadAllProperties pattern,
+            # which could crash this consumer on a transient SQLite lock).
+            refreshStreaming(inTsSet)
 
     # --------------------------- STEPS functions --------------------------------------------
     def convertInputStep(self, ts: TiltSeries):

@@ -31,6 +31,7 @@ from collections import Counter
 from pyworkflow.protocol import ProtStreamingBase
 from pyworkflow.utils import Message, cyanStr, makePath, redStr
 from tomo.objects import Tomogram
+from tomo.utils import refreshStreaming
 from tomo3d import Plugin
 from pyworkflow.protocol.params import IntParam, EnumParam, LEVEL_ADVANCED, FloatParam, PointerParam, GT
 from tomo3d.protocols.protocol_base import ProtBaseTomo3d, IN_TOMO_SET
@@ -185,10 +186,10 @@ class ProtTomo3dProtDenoiseTomogram(ProtBaseTomo3d, ProtStreamingBase):
                     logger.info(cyanStr(f"Steps created for tsId = {tsId}"))
                     self.itemTsIdReadList.append(tsId)
 
-            time.sleep(10)
-            if inTomoSet.isStreamOpen():
-                with self._lock:
-                    inTomoSet.loadAllProperties()  # refresh status for the streaming
+            # Conservative, lock-safe, never-fatal stream-state refresh
+            # (replaces the fragile time.sleep + loadAllProperties pattern,
+            # which could crash this consumer on a transient SQLite lock).
+            refreshStreaming(inTomoSet)
 
     # --------------------------- STEPS functions --------------------------------------------
     def denoiseTomogramStep(self, tomo: Tomogram):
